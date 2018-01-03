@@ -7,8 +7,6 @@ Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
 phpstable7=7.0.25
 yum -y install wget gcc make vim screen epel-release
-#µ¼ÈëEPELµÄkey
-#rpm --import http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6 
 yum clean all
 yum install libxml2-devel libjpeg-devel libjpeg-devel libpng-devel freetype-devel bzip2-devel net-snmp-devel openldap-devel gmp-devel -y
 

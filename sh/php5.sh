@@ -250,11 +250,6 @@ zend_loader.license_path =
 EOF
 
 
-#取消PDF模块的安装20161209
-#wget http://www.pdflib.com/binaries/PDFlib/907/PDFlib-9.0.7p1-Linux-x86_64-php.tar.gz
-
-
-
 #为了避免冲突，snmp用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
 [snmp]

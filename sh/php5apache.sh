@@ -166,10 +166,6 @@ zend_extension=ioncube_loader_lin_5.6_ts.so
 EOF
 
 
-#wget http://www.pdflib.com/binaries/PDFlib/907/PDFlib-9.0.7p1-Linux-x86_64-php.tar.gz
-#mv  ~/PDFlib-9.0.7p1-Linux-x86_64-php/bind/php/php-560/php_pdflib.so  /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226
-
-
 cd ~
 #wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz
 #wget http://downloads.zend.com/guard/7.0.0/ZendGuard-7.0.0-linux.gtk.x86_64.tar.gz
