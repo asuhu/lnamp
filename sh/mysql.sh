@@ -3,7 +3,7 @@
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-sqlstable=5.6.38
+sqlstable=5.6.39
 
 if [ ! -e '/usr/bin/wget' ]; then
 yum -y install wget

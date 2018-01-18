@@ -15,7 +15,7 @@ yum -y install bison bison-devel libevent libevent-devel libxslt-devel  libidn-d
 
 install_re2c(){
 cd ~
-wget https://sourceforge.net/projects/re2c/files/0.16/re2c-0.16.tar.gz
+wget -4 https://sourceforge.net/projects/re2c/files/0.16/re2c-0.16.tar.gz
 tar zxf re2c-0.16.tar.gz && cd re2c-0.16
 ./configure
 make -j$a && make install
@@ -27,12 +27,12 @@ rm -rf re2c-0.16*
 install_nghttp2(){
 if [ ! -d /usr/local/nghttp2  ];then
 cd ~
-#wget https://github.com/nghttp2/nghttp2/releases/download/v1.29.0/nghttp2-1.29.0.tar.gz
-if wget http://file.asuhu.com/so/nghttp2-1.29.0.tar.gz
+#wget -4 https://github.com/nghttp2/nghttp2/releases/download/v1.29.0/nghttp2-1.29.0.tar.gz
+if wget -4 http://file.asuhu.com/so/nghttp2-1.29.0.tar.gz
 then
 echo "download nghttp2 success"
 else
-wget http://arv.asuhu.com/ftp/so/nghttp2-1.29.0.tar.gz
+wget -4 http://arv.asuhu.com/ftp/so/nghttp2-1.29.0.tar.gz
 fi
 
 tar -zxvf nghttp2-1.29.0.tar.gz;rm -rf nghttp2-1.29.0.tar.gz
@@ -89,7 +89,7 @@ fi
 
 if [ ! -d /usr/local/zlib ];then
 cd ~
-wget http://zlib.net/zlib-1.2.11.tar.gz
+wget -4 http://zlib.net/zlib-1.2.11.tar.gz
 tar -zxvf zlib-1.2.11.tar.gz && rm -rf zlib-1.2.11.tar.gz
 cd zlib-1.2.11
 ./configure  --prefix=/usr/local/zlib
@@ -170,7 +170,7 @@ yum -y install mhash mhash-devel libmcrypt libmcrypt-devel mcrypt
 
 install_certificate(){
 #只要升级curl就会出现这个问题 OpenSSL Error messages: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify 
-wget -O /usr/local/openssl/ssl/cert.pem http://curl.haxx.se/ca/cacert.pem
+wget -4 -O /usr/local/openssl/ssl/cert.pem http://curl.haxx.se/ca/cacert.pem
 }
 
 
@@ -179,11 +179,11 @@ install_phpredis() {
 phpredisvs=phpredis-3.1.5
 cd ~
 
-if wget http://file.asuhu.com/so/${phpredisvs}.tar.gz
+if wget -4 http://file.asuhu.com/so/${phpredisvs}.tar.gz
 then
 echo "download phpredis success"
 else
-wget http://arv.asuhu.com/ftp/so/${phpredisvs}.tar.gz
+wget -4 http://arv.asuhu.com/ftp/so/${phpredisvs}.tar.gz
 fi
 
 tar -zxvf ${phpredisvs}.tar.gz;rm -rf ${phpredisvs}.tar.gz

@@ -69,19 +69,32 @@ iptables -I INPUT -p tcp -m multiport --dport 80,443,8080,3306 -j ACCEPT;
 service iptables save;service iptables restart;
 echo 'export PATH=/usr/local/apache/bin:$PATH'>>/etc/profile;
 source /etc/profile;
+#日志轮训
+    cat > /etc/logrotate.d/httpd <<EOF
+   /usr/local/apache/logs/*log{
+        daily
+        rotate 14
+        missingok
+        notifempty
+        compress
+        sharedscripts
+        postrotate
+            [ ! -f /usr/local/apache/logs/httpd.pid ] || kill -USR1 \`cat /usr/local/apache/logs/httpd.pid\`
+        endscript
+    }
+EOF
+
+#修改apache的用户和组，监听端口，管理员邮箱，对php文件的支持，MPM
     sed -i 's/^User.*/User apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^Group.*/Group apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^#ServerName www.example.com:80/ServerName 0.0.0.0:80/' /usr/local/apache/conf/httpd.conf
     sed -i 's/^ServerAdmin you@example.com/ServerAdmin admin@localhost/' /usr/local/apache/conf/httpd.conf
     sed -i 's@^#Include conf/extra/httpd-info.conf@Include conf/extra/httpd-info.conf@' /usr/local/apache/conf/httpd.conf
-    sed -i 's@DirectoryIndex index.html@DirectoryIndex index.html index.php@' /usr/local/apache/conf/httpd.conf
+    sed -i 's@DirectoryIndex index.html@DirectoryIndex index.html index.htm index.php index.shtml@' /usr/local/apache/conf/httpd.conf
     sed -i "s@^#Include conf/extra/httpd-mpm.conf@Include conf/extra/httpd-mpm.conf@" /usr/local/apache/conf/httpd.conf
     sed -i 's@^#Include conf/extra/httpd-autoindex.conf@Include conf/extra/httpd-autoindex.conf@' /usr/local/apache/conf/httpd.conf
     sed -i 's@^#Include conf/extra/httpd-languages.conf@Include conf/extra/httpd-languages.conf@' /usr/local/apache/conf/httpd.conf
-
-
-#修改apache的用户和组，监听端口，管理员邮箱，对php文件的支持，MPM
-
+#启用模块
     sed -i -r 's/^#(.*mod_cache.so)/\1/' /usr/local/apache/conf/httpd.conf
     sed -i -r 's/^#(.*mod_cache_socache.so)/\1/' /usr/local/apache/conf/httpd.conf
     sed -i -r 's/^#(.*mod_socache_shmcb.so)/\1/' /usr/local/apache/conf/httpd.conf
@@ -107,8 +120,7 @@ source /etc/profile;
     sed -i -r 's/^#(.*mod_http2.so)/\1/' /usr/local/apache/conf/httpd.conf
     sed -i -r 's/^#(.*mod_proxy_http2.so)/\1/' /usr/local/apache/conf/httpd.conf
     sed -i -r 's/^#(.*mod_negotiation.so)/\1/' /usr/local/apache/conf/httpd.conf
-#启用常见的模块
-#sed -i -r 's/^#(.*.so)/\1/' /usr/local/apache/conf/httpd.conf  不能使用这个，范围太大
+#启用常见的模块sed -i -r 's/^#(.*.so)/\1/' /usr/local/apache/conf/httpd.conf  不能使用这个，范围太大
 
 #设置server-status的允许范围
     sed -i 's/Allow from All/Require all granted/' /usr/local/apache/conf/extra/httpd-vhosts.conf
@@ -117,8 +129,6 @@ source /etc/profile;
 
 #字符设置
 sed -i -e '/Options Indexes FollowSymLinks/a\IndexOptions Charset=UTF-8' /usr/local/apache/conf/httpd.conf
-
-mkdir -p /usr/local/apache/conf/vhost
 
   cat >> /usr/local/apache/conf/httpd.conf <<EOF
 <IfModule mod_headers.c>
@@ -139,7 +149,10 @@ ProtocolsHonorOrder On
     ServerSignature Off
 EOF
 
+mkdir -p /usr/local/apache/conf/vhost
+chown apache.apache -R /usr/local/apache
 /usr/local/apache/bin/httpd -V
+#Include conf/vhost/*.conf
 #Require ip 0.0.0.0   允许本机所有地址
 #Require ip ::1       允许本机IPV6地址
 #Require all granted 所有的都允许

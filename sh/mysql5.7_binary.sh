@@ -3,7 +3,7 @@
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-sqlstable=5.7.20
+sqlstable=5.7.21
 glibcstable=glibc2.12
 yum -y install gcc gcc-c++ ncurses ncurses-devel cmake
 yum -y install libaio

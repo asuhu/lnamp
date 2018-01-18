@@ -8,6 +8,21 @@ fi
 #Check if user is root
 [ $(id -u) != "0" ] && { echo "Error: You must be root to run this script"; exit 1; }
 
+#使用PS1自定义命令行提示符的参数
+cat > /etc/profile.d/lnamp.sh << "EOF"
+HISTFILESIZE=1000000000
+HISTSIZE=100000000
+PROMPT_COMMAND="history -a"
+HISTTIMEFORMAT="%Y-%m-%d_%H:%M:%S `whoami` "
+
+PS1="\[\e[37;40m\][\[\e[32;40m\]\u\[\e[37;40m\]@\h \[\e[35;40m\]\W\[\e[0m\]]\\$ "
+
+alias l='ls -AFhlt'
+alias lh='l | head'
+alias vi=vim
+EOF
+
+
 #增加swap
 source ~/sh/swap.sh
 lscpu  >/dev/null 2>&1
@@ -35,13 +50,13 @@ next() {
 
 #版本定义
 nginx_openssl=Nginx1.12.2
-apache=Apache2.2.34_prefork_No_HTTP2
+apache=Apache2.2.34_prefork_No_Support_HTTP2
 apache_openssl=Apache2.4.29_event_HTTP2
-php5apache=PHP5.6.32_Only_Support_Apache
-php5=PHP5.6.32_Not_Support_Apache
+php5apache=PHP5.6.33_Only_Support_Apache
+php5=PHP5.6.33_Not_Support_Apache
 php7=PHP7.0.25_Not_Support_Apache
-mysql6=Mysql5.6.38
-mysql7=Mysql5.7.20
+mysql6=Mysql5.6.39
+mysql7=Mysql5.7.21
 
     if [ -f /etc/redhat-release -a -n "$(grep ' 6\.' /etc/redhat-release)" ]; then
 
@@ -83,13 +98,14 @@ chmod +x ./sh/*.sh
 echo -e "\033[41;36m  Your System Version is 7  \033[0m";
 
 #判断CentOS7的防火墙状态
-if ! systemctl status firewald;then
+systemctl status firewald
+if [ ! $? -eq 0 ] ;then
  [ -z "`grep ^Port /etc/ssh/sshd_config`" ] && ssh_port=22 || ssh_port=`grep ^Port /etc/ssh/sshd_config | awk '{print $2}'`
 read -p "Please input new SSH port(Default: $ssh_port): " new_ssh_port
  [ -z "$new_ssh_port" ] && new_ssh_port=22
    if [ $new_ssh_port -lt 1024 >/dev/null 2>&1 -o $new_ssh_port eq 22]; then
       echo "The port greater than 1024"
-exit
+exit 1
    fi
   if [ -z "`grep ^Port /etc/ssh/sshd_config`" -a "$new_ssh_port" != '22' ]; then
     sed -i "s@^#Port.*@&\nPort $new_ssh_port@" /etc/ssh/sshd_config
@@ -112,12 +128,12 @@ yum install -y perl-Module-Install.noarch lsof
     fi
 
 
-#清屏
-clear
-
 #关闭安全上下文
 setenforce 0
 sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
+
+#清屏
+clear
 
 next
 echo "Total amount of Mem  : $tram MB"
@@ -136,11 +152,11 @@ exit 1
   else
     if [ "$Web_yn" == 'y' ]; then 
         echo 'Please select Web server:'
-        echo -e "\033[31m 1 $apache \033[0m"
-        echo -e "\033[31m 2 $apache_openssl \033[0m"
+        echo -e "\033[33m 1 $apache \033[0m"
+        echo -e "\033[33m 2 $apache_openssl \033[0m"
         echo -e "\033[31m 3 $nginx_openssl \033[0m"
         echo -e "\033[31m 4 Yum install nginx php mysql \033[0m"
-	echo -e "\033[31m 5 Tomcat8 \033[0m"
+	echo -e "\033[36m 5 Tomcat8 \033[0m"
         read -p "Please input a number:(Default 3 press Enter) " Web_version
         [ -z "$Web_version" ] && Web_version=3
         if [[ ! $Web_version =~ ^[1-5]$ ]]; then
@@ -157,7 +173,7 @@ exit 1
   else
     if [ "$PHP_yn" == 'y' ]; then 
         echo 'Please select php:'
-        echo -e "\033[31m 1 $php5apache \033[0m"
+        echo -e "\033[33m 1 $php5apache \033[0m"
         echo -e "\033[31m 2 $php5 \033[0m"
         echo -e "\033[31m 3 $php7 \033[0m"
         read -p "Please input a number:(Default 2 press Enter) " PHP_version
@@ -176,7 +192,7 @@ exit 1
   else
     if [ "$DB_yn" == 'y' ]; then 
         echo 'Please select database:'
-	echo -e "\033[31m 1 Do not install database \033[0m"
+	echo -e "\033[36m 1 Do not install database \033[0m"
         echo -e "\033[31m 2 $mysql6 \033[0m"
         echo -e "\033[31m 3 $mysql7 \033[0m"
         echo -e "\033[31m 4 $mysql7 binary \033[0m"
@@ -196,7 +212,8 @@ cat >> /etc/security/limits.conf <<EOF
 * hard nofile 65535  
 EOF
 
-echo "ulimit -SH 65535" >> /etc/rc.local
+echo "ulimit -SH 65535" >> /etc/rc.d/rc.local
+chmod +x /etc/rc.d/rc.local
 #soft 指的是当前系统生效的设置值  hard 表明系统中所能设定的最大值
 #nofile - 打开文件的最大数目  noproc - 进程的最大数目
 

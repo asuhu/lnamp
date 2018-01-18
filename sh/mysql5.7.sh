@@ -3,7 +3,7 @@
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-sqlstable57=5.7.20
+sqlstable57=5.7.21
 
 if [ "$Mem" -le 3000 ]; then
 echo -e "\033[31m Install MySQL-5.7 Memory less than 3000MB \033[0m \n"

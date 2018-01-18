@@ -2,9 +2,18 @@
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 apstable=2.2.34
 yum -y install gcc make epel-release  pcre-devel zlib-devel lynx openssl openssl-devel
+
 cd ~
-wget http://archive.apache.org/dist//httpd/httpd-$apstable.tar.gz
-tar -zxf httpd-$apstable.tar.gz;
+#原版wget http://archive.apache.org/dist//httpd/httpd-$apstable.tar.gz
+#判断国内国外下载优化版的apache
+cd ~
+if ping -c 1 216.58.200.4 >/dev/null;then
+wget http://file.asuhu.com/so/httpd-2.2.34.tar.gz   #http://arv.asuhu.com/ftp/so/httpd-2.2.34.tar.gz
+else
+wget http://qiniu.geecdn.com/httpd-2.2.34.tar.gz
+fi
+tar -zxf httpd-$apstable.tar.gz
+
 cd ~
 yum -y install expat-devel
 wget http://archive.apache.org/dist/apr/apr-1.6.2.tar.gz
@@ -50,6 +59,7 @@ service iptables save;service iptables restart;
 chmod +x /etc/init.d/httpd
 echo 'export PATH=/usr/local/apache/bin:$PATH'>>/etc/profile;
 source /etc/profile;
+#日志轮训
     cat > /etc/logrotate.d/httpd <<EOF
    /usr/local/apache/logs/*log{
         daily
@@ -63,13 +73,15 @@ source /etc/profile;
         endscript
     }
 EOF
+#修改apache的用户和组，监听端口，管理员邮箱，对php文件的支持
     sed -i 's/^User.*/User apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^Group.*/Group apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^#ServerName www.example.com:80/ServerName 0.0.0.0:80/' /usr/local/apache/conf/httpd.conf
     sed -i 's/^ServerAdmin you@example.com/ServerAdmin admin@localhost/' /usr/local/apache/conf/httpd.conf
     sed -i 's@^#Include conf/extra/httpd-info.conf@Include conf/extra/httpd-info.conf@' /usr/local/apache/conf/httpd.conf
-    sed -i 's@DirectoryIndex index.html@DirectoryIndex index.html index.php@' /usr/local/apache/conf/httpd.conf
-
+    sed -i 's@DirectoryIndex index.html@DirectoryIndex index.html index.htm index.php index.shtml@' /usr/local/apache/conf/httpd.conf
+    sed -i 's@^#Include conf/extra/httpd-languages.conf@Include conf/extra/httpd-languages.conf@' /usr/local/apache/conf/httpd.conf
+#启用模块
     sed -i -r 's/^#(.*mod_cache.so)/\1/' /usr/local/apache/conf/httpd.conf
     sed -i -r 's/^#(.*mod_cache_socache.so)/\1/' /usr/local/apache/conf/httpd.conf
     sed -i -r 's/^#(.*mod_socache_shmcb.so)/\1/' /usr/local/apache/conf/httpd.conf
@@ -95,3 +107,25 @@ EOF
 
     sed -i 's/Allow from All/Require all granted/' /usr/local/apache/conf/extra/httpd-vhosts.conf
     sed -i 's/Require host .example.com/Require host localhost/g' /usr/local/apache/conf/extra/httpd-info.conf
+#server-status server-info
+sed -i 's/Allow from .example.com/Allow from ::1/g' /usr/local/apache/conf/extra/httpd-info.conf
+
+  cat >> /usr/local/apache/conf/httpd.conf << "EOF"
+<IfModule mod_headers.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml text/javascript
+  <FilesMatch "\.(js|css|html|htm|png|jpg|swf|pdf|shtml|xml|flv|gif|ico|jpeg)\$">
+    RequestHeader edit "If-None-Match" "^(.*)-gzip(.*)\$" "\$1\$2"
+    Header edit "ETag" "^(.*)-gzip(.*)\$" "\$1\$2"
+  </FilesMatch>
+  DeflateCompressionLevel 6
+  SetOutputFilter DEFLATE
+</IfModule>
+
+PidFile /var/run/httpd.pid
+ServerTokens ProductOnly
+ServerSignature Off
+EOF
+
+mkdir -p /usr/local/apache/conf/vhost
+chown apache.apache -R /usr/local/apache
+#Include conf/vhost/*.conf

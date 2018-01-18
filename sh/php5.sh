@@ -6,7 +6,7 @@ if [ $? -gt 0 ] ;then echo "error";exit 1 ;fi
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
-phpstable56=5.6.32
+phpstable56=5.6.33
 
 yum -y install wget gcc make vim screen epel-release
 yum clean all

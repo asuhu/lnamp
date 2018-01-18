@@ -60,33 +60,51 @@ tar -zxvf openssl-1.1.0-latest.tar.gz
 mv openssl-1.1.0? openssl-1.1.0-latest
 cd ~
 
-#  + using PCRE library: /root/pcre
-#  + using OpenSSL library: /root/openssl
-#  + using zlib library: /root/zlib
 wget -4 http://nginx.org/download/nginx-${ngstable}.tar.gz
 tar -zxvf nginx-${ngstable}.tar.gz
-cd /root/nginx-${ngstable}
+
+#Copy NGINX manual page to /usr/share/man/man8:
+yum -y install gzip man
+cp -f ~/nginx-${ngstable}/man/nginx.8 /usr/share/man/man8
+gzip /usr/share/man/man8/nginx.8
+
+cd ~/nginx-${ngstable}
 ./configure --prefix=/usr/local/nginx --user=www --group=www \
+--build=CentOS \
+--modules-path=/usr/local/nginx/modules \
 --with-openssl=/root/openssl-1.1.0-latest \
 --with-pcre=/root/pcre-${curlstable} \
 --with-zlib=/root/zlib-${zlibstable} \
 --with-http_stub_status_module \
 --with-http_secure_link_module \
+--with-threads \
+--with-file-aio \
 --with-http_v2_module \
 --with-http_ssl_module \
 --with-http_gzip_static_module \
+--with-http_gunzip_module \
 --with-http_realip_module \
 --with-http_flv_module \
 --with-http_mp4_module \
 --with-http_sub_module \
+--with-http_dav_module \
 --with-stream \
---with-stream_ssl_module
+--with-stream=dynamic \
+--with-stream_ssl_module \
+--with-stream_realip_module \
+--with-stream_ssl_preread_module
 make -j$a
 make install
 
 #--with-ipv6 废弃的参数
 #--add-module=/root/ngx_http_google_filter_module
 #--add-module=/root/ngx_http_substitutions_filter_module
+#--modules-path=PATH                set modules path
+#--add-dynamic-module=PATH          enable dynamic external module
+#  + using PCRE library: /root/pcre
+#  + using OpenSSL library: /root/openssl
+#  + using zlib library: /root/zlib
+
 
 if [ ! -e '/usr/local/nginx/sbin/nginx' ]; then
 echo -e "\033[31m Install nginx error ... \033[0m \n"
@@ -244,9 +262,6 @@ service iptables start;chkconfig iptables on;
 iptables -I INPUT -p tcp -m multiport --dport 80,443,8080,8081,3306 -j ACCEPT;
 service iptables save;service iptables restart;
 
-#安装crond和CentOS7 包不一样
-if ! which crond >/dev/null 2>&1;then yum install vixie-cron -y; fi
-chkconfig crond on
 #################################################
 #最新zlib，未使用
 #if [ $Bit -eq 64 ]; then
@@ -256,22 +271,23 @@ chkconfig crond on
 #fi
 #################################################
 
+#禁用firewalld，启用iptables
 elif [ $CentOS_RHEL_version -eq 7 ];then
-if systemctl status firewald;then
-  systemctl stop firewalld
-  systemctl disable firewalld
-  systemctl mask firewald
+ if systemctl status firewalld;then
+systemctl stop firewalld;systemctl disable firewalld;systemctl mask firewalld
+echo off firewalld
 else
-# systemctl enable firewalld
-# systemctl start firewalld
-  systemctl mask firewald
-fi
+systemctl mask firewalld
+ fi
+#systemctl is-enabled firewalld
+#systemctl is-active firewalld
 
 yum install iptables-services iptables-devel -y
 systemctl enable iptables
 iptables -F
 iptables -I INPUT -p tcp -m multiport --dport 80,443,8080,8081,3306 -j ACCEPT;
 service iptables save;service iptables restart;
+###################################################
 cat > /usr/lib/systemd/system/nginx.service << EOF
 [Unit]
 Description=nginx - high performance web server
@@ -294,10 +310,6 @@ chmod +x /usr/lib/systemd/system/nginx.service
 systemctl enable nginx.service
 systemctl start nginx.service
 
-#安装crond
-if ! which crond >/dev/null 2>&1;then yum install cronie -y; fi
-systemctl enable crond
-
 fi
 #CentOS 6 7 判断结束
 ###########################################################
@@ -305,11 +317,15 @@ fi
 #环境变量设置
 echo 'export PATH=/usr/local/nginx/sbin:$PATH'>>/etc/profile;
 source /etc/profile;#重启生效
+
 service nginx restart;
 #ldd $(which nginx)
 
 
 #日志轮训，需要配合crontab和logrotate
+#安装crond Cronie (sys-process/cronie) is a fork of vixie-cron done by Fedora. Because of it being a fork it has the same feature set the original vixie-cron provides
+if ! which crond >/dev/null 2>&1;then yum install cronie -y; fi
+
 yum -y install logrotate
 if [ $CentOS_RHEL_version -eq 6 ];then
 cat > /etc/logrotate.d/nginx << EOF
@@ -342,7 +358,7 @@ endscript
 EOF
 fi
 
-#清理nginx
+#清理nginx pcre zlib
 cd ~
 rm -rf nginx-${ngstable}.tar.gz
 rm -rf openssl-1.1.0-latest.tar.gz

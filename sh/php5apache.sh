@@ -7,7 +7,7 @@ if [ $? -gt 0 ] ;then echo "error";exit 1 ;fi
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
-phpstable56=5.6.32
+phpstable56=5.6.33
 
 #yum安装
 yum -y install wget gcc make vim screen epel-release
@@ -152,8 +152,21 @@ opcache.enable_cli=1
 ;opcache.optimization_level=0
 EOF
 
-#apache 2.4.27 prefork不支持http2
-#worker evnet需要线程安全
+#apache 2.4.27 prefork不支持http2,worker evnet需要线程安全
+#ioncube_loader安装
+if [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226 ];then
+cd ~ 
+wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_5.6.so
+    if [ ! -e '/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so' ];then
+wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_5.6.so
+    fi
+chmod +x /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so
+cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
+[ioncube]
+zend_extension=ioncube_loader_lin_5.6.so
+EOF
+
+elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226 ]; then
 cd ~ 
 wget -O /usr/local/php/lib/php/extensions/no-debug-zts-20131226/ioncube_loader_lin_5.6_ts.so  http://file.asuhu.com/so/ioncube/ioncube_loader_lin_5.6_ts.so
     if [ ! -e '/usr/local/php/lib/php/extensions/no-debug-zts-20131226/ioncube_loader_lin_5.6_ts.so' ];then
@@ -164,14 +177,33 @@ cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
 zend_extension=ioncube_loader_lin_5.6_ts.so
 EOF
+fi
 
-
+#安装ZendGuardLoader.so
+if [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226 ];then
+cd ~ 
+wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so http://file.asuhu.com/so/zend/ZendGuardLoader.so
+    if [ ! -e '/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so' ];then
+wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so http://arv.asuhu.com/ftp/so/zend/ZendGuardLoader.so
+    fi
+chmod +x /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so
+cat > /usr/local/php/etc/php.d/zend.ini << EOF
+[Zend Guard]
+zend_extension = ZendGuardLoader.so
+zend_loader.enable = 1
+zend_loader.disable_licensing = 0
+zend_loader.obfuscation_level_support = 3
+zend_loader.license_path =
+EOF
+elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226 ]; then
+echo "nothing to do"
 cd ~
 #wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz
 #wget http://downloads.zend.com/guard/7.0.0/ZendGuard-7.0.0-linux.gtk.x86_64.tar.gz
 #wget -O /usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so  http://file.asuhu.com/so/zend/ZendGuardLoader.so
 #chmod +x /usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so
 # /usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so: undefined symbol: executor_globals
+fi
 
 #为了避免冲突，snmp用单独的模块，/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
