@@ -1,16 +1,18 @@
 <ol>
 <li>一键源码编译安装LNMP LAMP 支持CentOS6、CentOS7、RHEL6、RHEL7</li>
-<li>Nginx/1.12.2 built with OpenSSL 1.1.0g</li>
+<li>Nginx/1.16.1 built with OpenSSL 1.1.1</li>
 <li>Apache2.2为PreforkMPM,Apache2.4为Event MPM(编译Prefork、Worker和Event三种MPM可以自行切换)</li>
 <li>MySQL-5.6</li>
 <li>MySQL-5.7</li>
-<li>PHP集成了 Zend OPcache、Zend Guard Loader、ionCube Loader、 phpredis等模块</li>
-<li>PHP集成snmp模块，支持zabbix、cacti、Nagios直接使用snmp协议</li>
+<li>PHP5.6.40</li>
+<li>PHP7.2.22</li>
+<li>Zend OPcache、Zend Guard Loader、ionCube Loader、 phpredis、swoole、xdebug、fileinfo</li>
+<li>snmp，支持zabbix、cacti、Nagios直接使用snmp协议</li>
 <li>支持Redis-Server</li>
 <li>Tomcat8 JDK1.8</li>
-<li>curl 7.57.0 (x86_64-pc-linux-gnu) libcurl/7.57.0 OpenSSL/1.0.2n zlib/1.2.11 libidn2/2.0.4 nghttp2/1.26.0</li>
+<li>curl 7.64.0 (x86_64-pc-linux-gnu) libcurl/7.64.0 OpenSSL/1.0.2s zlib/1.2.11 libidn2/2.2.0 libpsl/0.7.0 (+libicu/50.1.2) nghttp2/1.39.2</li>
 <li>TLS SNI support enabled</li>
-<li>多个配置Nginx https和反向代理的例子</li>
+<li>多个Nginx https配置和反向代理配置</li>
 </ol>
 
 <h2>Supported System</h2>
