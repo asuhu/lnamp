@@ -4,10 +4,9 @@ yum -y install gcc gcc-c++ make vim screen python wget git lsof
 tram=$( free -m | awk '/Mem/ {print $2}' )
 cd ~
 wget http://download.redis.io/releases/redis-stable.tar.gz
-tar zxf redis-stable.tar.gz && rm -rf redis-stable.tar.gz
+tar zxf redis-stable.tar.gz
 cd redis-stable
-make -j$a
-make install
+make -j ${a} && make install
 
 if [ -f "/root/redis-stable/src/redis-server" ]; then
 mkdir -p /usr/local/redis/{bin,etc,var}
@@ -39,3 +38,7 @@ chkconfig redis-server on
     echo "Redis-server installed successfully"
  service redis-server start
 fi
+
+cd ~
+rm -rf redis-stable.tar.gz
+rm -rf redis-stable

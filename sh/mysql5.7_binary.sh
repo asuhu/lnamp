@@ -1,36 +1,50 @@
 #!/bin/bash
-#centos6 7
+#CentOS 6 7
+#Generic #https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.24-linux-glibc2.12-x86_64.tar.gz
+#
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
+if [ -z ${sqlpass} ];then
+sqlpass='R0JZrvdUt&P@WlHs'
+fi
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-sqlstable=5.7.21
+#define
+mysql_install_dir=/usr/local/mysql
+mysql_data_dir=/usr/local/mysql/data
+sqlstable=5.7.27
 glibcstable=glibc2.12
-yum -y install gcc gcc-c++ ncurses ncurses-devel cmake
+#mysql account
+    id -u mysql >/dev/null 2>&1
+    [ $? -ne 0 ] && useradd -M -s /sbin/nologin mysql
+#folder
+#  [ ! -d "${mysql_install_dir}" ] && mkdir -p ${mysql_install_dir} && chown mysql.mysql -R ${mysql_install_dir}  因为mv  mysql-${sqlstable}-linux-${glibcstable}-x86_64  ${mysql_install_dir}
+#  mkdir -p ${mysql_data_dir} && chown mysql.mysql -R ${mysql_data_dir}因为mv  mysql-${sqlstable}-linux-${glibcstable}-x86_64  ${mysql_install_dir}
+yum -y install gcc gcc-c++ ncurses ncurses-devel cmake curl openssl openssl-devel wget python
 yum -y install libaio
-yum -y install numactl  #/usr/local/mysql/bin/mysqld: error while loading shared libraries: libnuma.so.1
-wget -q https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
-tar -zxf mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
-mv  mysql-${sqlstable}-linux-${glibcstable}-x86_64  /usr/local/mysql
+yum -y install numactl                                 #/usr/local/mysql/bin/mysqld: error while loading shared libraries: libnuma.so.1
 
-useradd -M -s /sbin/nologin  mysql 
-mkdir -p /usr/local/mysql/data
-chown -R mysql.mysql  /usr/local/mysql
-cd /usr/local/mysql
-/usr/local/mysql/bin/mysqld --initialize-insecure --basedir=/usr/local/mysql --datadir=/usr/local/mysql/data --user=mysql
-chown -R mysql.mysql  /usr/local/mysql
+if [ ! -e '/usr/bin/wget' ]; then yum -y install wget; fi
+
+cd ~
+wget -4 -q https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
+tar -zxf mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
+mv  mysql-${sqlstable}-linux-${glibcstable}-x86_64  ${mysql_install_dir}
+
+#初始化
+#创建数据文件夹
+mkdir -p ${mysql_data_dir} && chown -R mysql.mysql ${mysql_install_dir} && chown -R mysql.mysql  ${mysql_data_dir}
+chown -R mysql.mysql ${mysql_install_dir} && chown -R mysql.mysql  ${mysql_data_dir}
+${mysql_install_dir}/bin/mysqld --initialize-insecure --basedir=${mysql_install_dir} --datadir=${mysql_data_dir} --user=mysql
 #cp /usr/local/mysql/support-files/my-default.cnf  /etc/my.cnf
 
-echo 'export PATH=/usr/local/mysql/bin/:$PATH'>>/etc/profile;
-source /etc/profile;
-/bin/cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld;
-chmod +x /etc/init.d/mysqld;
-/bin/cp /usr/local/mysql/bin/mysqldump /usr/bin/mysqldump;
-/bin/cp /usr/local/mysql/bin/mysql /usr/bin/mysql;
-chkconfig --add mysqld; chkconfig mysqld on;
-
-
-echo /usr/local/mysql/lib >> /etc/ld.so.conf.d/mysql.conf
-echo /usr/local/mysql/lib64 >> /etc/ld.so.conf.d/mysql.conf
+#mysqld
+/bin/cp ${mysql_install_dir}/support-files/mysql.server /etc/init.d/mysqld
+chmod +x /etc/init.d/mysqld
+ sed -i "s@^basedir=.*@basedir=${mysql_install_dir}@" /etc/init.d/mysqld
+ sed -i "s@^datadir=.*@datadir=${mysql_data_dir}@" /etc/init.d/mysqld
+/bin/cp ${mysql_install_dir}/bin/mysqldump /usr/bin/mysqldump
+/bin/cp ${mysql_install_dir}/bin/mysql /usr/bin/mysql
+chkconfig --add mysqld && chkconfig mysqld on
 
 
 cat > /etc/my.cnf << EOF
@@ -46,9 +60,9 @@ no-auto-rehash
 [mysqld]
 port = 3306
 socket = /tmp/mysql.sock
-basedir = /usr/local/mysql
-datadir = /usr/local/mysql/data
-pid-file = /usr/local/mysql/data/mysql.pid
+basedir = ${mysql_install_dir}
+datadir = ${mysql_data_dir}
+pid-file = ${mysql_data_dir}/mysql.pid
 user = mysql
 bind-address = 0.0.0.0
 server-id = 1
@@ -84,10 +98,10 @@ ft_min_word_len = 4
 log_bin = mysql-bin
 binlog_format = mixed
 expire_logs_days = 30
-log_error = /usr/local/mysql/data/mysql-error.log
+log_error = ${mysql_data_dir}/mysql-error.log
 slow_query_log = 1
 long_query_time = 1
-slow_query_log_file = /usr/local/mysql/data/mysql-slow.log
+slow_query_log_file = ${mysql_data_dir}/mysql-slow.log
 performance_schema = 0
 explicit_defaults_for_timestamp
 #lower_case_table_names = 1
@@ -123,7 +137,6 @@ read_buffer = 4M
 write_buffer = 4M
 EOF
 
-
 #优化相关参数
 if [ $Mem -gt 1500 -a $Mem -le 2500 ];then
     sed -i 's@^thread_cache_size.*@thread_cache_size = 16@' /etc/my.cnf
@@ -150,17 +163,24 @@ elif [ $Mem -gt 3500 ];then
     sed -i 's@^tmp_table_size.*@tmp_table_size = 128M@' /etc/my.cnf
     sed -i 's@^table_open_cache.*@table_open_cache = 1024@' /etc/my.cnf
 fi
-/etc/init.d/mysqld restart
-/usr/local/mysql/bin/mysqladmin -uroot -p password "$sqlpass";
-/usr/local/mysql/bin/mysql -uroot -p${sqlpass} <<EOF
-drop database if exists test;
-delete from mysql.user where not (user='root');
-#delete from mysql.user where password='';
-#ERROR 1054 (42S22) at line 3: Unknown column 'password' in 'where clause'
-delete from mysql.db where user='';
-flush privileges;
-exit
-EOF
-echo -e "mysql root password  \033[41;36m  $sqlpass  \033[0m";
-#select user,host from mysql.user;
 
+/etc/init.d/mysqld restart
+if [ ! -e "${mysql_data_dir}/mysql.pid" ]; then
+echo -e "\033[31m MySQL Community Server ${sqlstable}-linux-${glibcstable}-x86_64 Config Error ... \033[0m \n"
+kill -9 $$
+fi
+
+#修改默认为空的密码，添加root@127.0.0.1
+${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'127.0.0.1' identified by \"${sqlpass}\" with grant option;"
+${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'localhost' identified by \"${sqlpass}\" with grant option;"
+
+#下面两行操作会出现[Warning] Using a password on the command line interface can be insecure.
+${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "reset master;"
+${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "select user,host from mysql.user;"
+
+echo -e "MySQL Community Server ${sqlstable}-linux-${glibcstable}-x86_64 root password  \033[41;36m  $sqlpass  \033[0m";
+#select user,host from mysql.user;
+${mysql_install_dir}/bin/mysql --version
+#添加环境变量
+echo "export PATH=${mysql_install_dir}/bin/:$PATH">>/etc/profile
+source /etc/profile

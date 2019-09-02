@@ -1,49 +1,61 @@
 #!/bin/bash
-#使用了EPEL源
-#定义常量
-if [ $? -gt 0 ] ;then echo "error";exit 1 ;fi
-
+#used epel-release
+#https://www.php.net/supported-versions.php
+#PHP 5.6.40 is the last scheduled release of PHP 5.6 branch  matching OpenSSL1.0.2
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
-phpstable56=5.6.33
+phpstable56=5.6.40
 
-yum -y install wget gcc make vim screen epel-release
-yum clean all
-yum install libxml2-devel curl-devel libjpeg-devel libjpeg-devel libpng-devel freetype-devel  bzip2-devel net-snmp-devel openldap-devel gmp-devel -y
 
-if [ ! -e '/usr/bin/wget' ]; then
-yum -y install wget
+if [ $Mem -le 640 ]; then
+  Memory_limit=64
+elif [ $Mem -gt 640 -a $Mem -le 1280 ]; then
+  Mem_level=1G
+  Memory_limit=128
+elif [ $Mem -gt 1280 -a $Mem -le 2500 ]; then
+  Mem_level=2G
+  Memory_limit=192
+elif [ $Mem -gt 2500 -a $Mem -le 3500 ]; then
+  Mem_level=3G
+  Memory_limit=256
+elif [ $Mem -gt 3500 -a $Mem -le 4500 ]; then
+  Mem_level=4G
+  Memory_limit=320
+elif [ $Mem -gt 4500 -a $Mem -le 8000 ]; then
+  Mem_level=6G
+  Memory_limit=384
+elif [ $Mem -gt 8000 ]; then
+  Mem_level=8G
+  Memory_limit=448
 fi
 
-#if [ $Bit -eq 64 ]; then
-#cp -frp /usr/lib64/libldap* /usr/lib/
-#fi
-#上面的将用--with-libdir=lib64代替，安装的系统是64位的，而64位的用户库文件默认是在/usr/lib64，指定--with-libdir=lib64，而编译脚本默认是lib
+yum -y install wget gcc make vim screen epel-release
+if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
+sudo yum-config-manager --enable epel
+yum -y install libxml2 libxml2-devel curl-devel libjpeg-devel libpng-devel freetype-devel  bzip2 bzip2-devel net-snmp-devel gmp-devel zlib-devel bison gd-devel 
+yum -y install python python-devel        #checking consistency of all components of python development environment... no
+yum -y install CUnit CUnit-devel          #configure: WARNING: No package 'cunit' found
 
-#安装一些扩展
-source ~/sh/function.sh
-install_add
+#yum -y install jansson-devel             #configure: No package 'jansson' found 和nghttp2冲突
+#yum -y openldap-devel
+#/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libssl.so.1.0.0
+#/usr/bin/ld: warning: libcrypto.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libcrypto.so.1.0.0
 
-#安装libmcrypt
+if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
+
+yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
+#Source installation bison libmcrypt openssl和curl(含zlib)
 source ~/sh/function.sh
+install_56_bison
 install_phpmcrypt
-
-#安装openssl
-source ~/sh/function.sh
 install_phpopenssl
-
-#安装curl
-source ~/sh/function.sh
 install_curl
-/usr/local/curl/bin/curl --version
 
 cd ~
-wget -4 -q http://hk2.php.net/distributions/php-${phpstable56}.tar.gz  #wget -4 http://www.php.net/distributions/php-${phpstable56}.tar.gz
-tar -zxf php-${phpstable56}.tar.gz && rm -rf  php-${phpstable56}.tar.gz;
+wget -4 -q http://hk2.php.net/distributions/php-${phpstable56}.tar.gz  #wget -4 http://www.php.net/distributions/php-${phpstable56}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable56}.tar.gz
+tar -zxf php-${phpstable56}.tar.gz && rm -rf php-${phpstable56}.tar.gz
 cd php-${phpstable56}
-yum -y install zlib-devel
-if [ $Bit -eq 64 ]; then
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/usr/local/php/etc \
 --with-config-file-scan-dir=/usr/local/php/etc/php.d \
 --enable-fpm --with-fpm-user=www --with-fpm-group=www \
@@ -51,43 +63,20 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/u
 --with-iconv-dir=/usr/local  --with-freetype-dir --with-jpeg-dir --with-png-dir \
 --with-libxml-dir=/usr --enable-xml --disable-rpath \
 --with-snmp=shared --with-bz2 \
---with-ldap \
---with-ldap-sasl \
---with-libdir=lib64 \
 --with-gd --with-mcrypt \
---with-openssl-dir=/usr/local/openssl --with-openssl --with-curl=/usr/local/curl --with-zlib-dir=/usr/local/zlib --with-zlib \
+--with-openssl=/usr/local/openssl --with-curl=/usr/local/curl --with-zlib=/usr/local/zlib \
 --with-mhash --with-xmlrpc --without-pear --with-gettext \
 --enable-json --enable-bcmath --enable-calendar --enable-wddx \
 --enable-shmop --enable-sysvsem --enable-inline-optimization \
 --enable-mbregex --enable-mbstring \
 --enable-ftp --enable-gd-native-ttf --enable-pcntl --enable-sockets --enable-zip --enable-soap --enable-exif \
 --disable-ipv6 --disable-debug --disable-fileinfo -with-gmp --disable-maintainer-zts
- elif [ $Bit -eq 32 ];then
-CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/usr/local/php/etc \
---with-config-file-scan-dir=/usr/local/php/etc/php.d \
---enable-fpm --with-fpm-user=www --with-fpm-group=www \
---with-mysql=mysqlnd --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --enable-opcache \
---with-iconv-dir=/usr/local  --with-freetype-dir --with-jpeg-dir --with-png-dir \
---with-zlib --with-libxml-dir=/usr --enable-xml --disable-rpath \
---with-snmp=shared --with-bz2 \
---with-ldap \
---with-ldap-sasl \
---with-gd --with-mcrypt \
---with-openssl-dir=/usr/local/openssl --with-openssl --with-curl=/usr/local/curl --with-zlib-dir=/usr/local/zlib --with-zlib \
---with-mhash --with-xmlrpc --without-pear --with-gettext \
---enable-json --enable-bcmath --enable-calendar --enable-wddx \
---enable-shmop --enable-sysvsem --enable-inline-optimization \
---enable-mbregex --enable-mbstring \
---enable-ftp --enable-gd-native-ttf --enable-pcntl --enable-sockets --enable-zip --enable-soap --enable-exif \
---disable-ipv6 --disable-debug --disable-fileinfo -with-gmp --disable-maintainer-zts
-fi
+#--with-ldap \
+#--with-ldap-sasl \
 
-make -j$a
-make install
+make -j ${a} && make install
 
-#Scan this dir for additional .ini files
-mkdir -p /usr/local/php/etc/php.d
-
+mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
 #添加用户和权限www.www
     id -u www >/dev/null 2>&1
     [ $? -ne 0 ] && useradd -M -s /sbin/nologin www
@@ -95,14 +84,14 @@ chown www.www -R /usr/local/php;
 
 #检测php是否安装成功
 if [ ! -e '/usr/local/php/bin/phpize' ]; then
-echo -e "\033[31m Install php error ... \033[0m \n"
-exit 1
+echo -e "\033[31m Install PHP Error ... \033[0m \n"
+kill -9 $$
 fi
 
-cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf;  #修改fpm配置php-fpm.conf.default文件名称
+cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf;          #修改fpm配置php-fpm.conf.default文件名称
 cp /root/php-${phpstable56}/php.ini-production /usr/local/php/etc/php.ini;           #复制php.ini配置文件
 cp /root/php-${phpstable56}/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm;             #复制php-fpm启动脚本到init.d
-chmod +x /etc/init.d/php-fpm;                                               #赋予执行权限
+chmod +x /etc/init.d/php-fpm;                                                        #赋予执行权限
 chkconfig --add php-fpm;chkconfig php-fpm on;
 
 #php-fpm.conf
@@ -162,9 +151,6 @@ env[TMPDIR] = /tmp
 env[TEMP] = /tmp
 EOF
 
-#path
-echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile
-source /etc/profile
 
 #memory_limit顾名思义，这个值是用来限制PHP所占用的内存的，具体一点说就是一个PHP工作进程即php-fpm所能够使用的最大内存，默认是128MB，
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
@@ -182,30 +168,28 @@ sed -i 's@^request_order.*@request_order = "CGP"@' /usr/local/php/etc/php.ini
 sed -i 's@^;date.timezone.*@date.timezone = Asia/Shanghai@' /usr/local/php/etc/php.ini
 sed -i 's@^post_max_size.*@post_max_size = 100M@' /usr/local/php/etc/php.ini
 sed -i 's@^upload_max_filesize.*@upload_max_filesize = 50M@' /usr/local/php/etc/php.ini
-sed -i 's@^max_execution_time.*@max_execution_time = 5@' /usr/local/php/etc/php.ini
+sed -i 's@^max_execution_time.*@max_execution_time = 60@' /usr/local/php/etc/php.ini
 sed -i 's@^disable_functions.*@disable_functions = passthru,exec,system,chroot,chgrp,chown,shell_exec,proc_open,proc_get_status,ini_alter,ini_restore,dl,openlog,syslog,readlink,symlink,popepassthru,stream_socket_server,fsocket,popen,eval,parse_ini_file,show_source,pclose,multi_exec,chmod,set_time_limit@' /usr/local/php/etc/php.ini
+sed -i "s@^;curl.cainfo.*@curl.cainfo = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
+sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
 
-#nginx创建文件夹
-mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;chmod -R 777 /home/wwwlogs/;
-
-#nginx结合php的配置
-wget -O /usr/local/nginx/conf/nginx.conf http://file.asuhu.com/so/nginx.conf
+#Nginx PHP fastcgi
+mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
+wget -t 3 -O  /usr/local/nginx/conf/nginx.conf  http://file.asuhu.com/so/nginx.conf
     if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
 wget -O /usr/local/nginx/conf/nginx.conf http://arv.asuhu.com/ftp/so/nginx.conf
     fi
 
-
 #探针
-wget -O /home/wwwroot/web/proble.tar.gz http://file.asuhu.com/so/proble.tar.gz
-cd /home/wwwroot/web/
-tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
+wget -t 3 -O /home/wwwroot/web/proble.tar.gz  http://file.asuhu.com/so/proble.tar.gz
+cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
 
-#phpopcache扩展
+#PHPopcache扩展，线程安全不适合这个模块/usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so: undefined symbol: executor_globals
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
 [opcache]
 zend_extension=opcache.so
 opcache.enable=1
-opcache.memory_consumption=128
+opcache.memory_consumption=${Memory_limit}
 opcache.interned_strings_buffer=8
 opcache.max_accelerated_files=4000
 opcache.revalidate_freq=60
@@ -215,31 +199,33 @@ opcache.enable_cli=1
 ;opcache.optimization_level=0
 EOF
 
-
-#线程安全不适合这个模块/usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so: undefined symbol: executor_globals
-
+#############################
 cd ~
-#wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-#wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64_5.1.2.tar.gz
-#wget https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_5.6.so
-    if [ ! -e '/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so' ];then
-wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_5.6.so
+#ioncube_loader安装 http://www.ioncube.com/loaders.php #https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226
+
+wget -t 3 -O ${php_extensions_path}/ioncube_loader_lin_5.6.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_5.6.so
+    if [ ! -e "${php_extensions_path}/ioncube_loader_lin_5.6.so" ];then
+wget -O ${php_extensions_path}/ioncube_loader_lin_5.6.so http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_5.6.so
     fi
-chmod +x /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ioncube_loader_lin_5.6.so
+chmod +x ${php_extensions_path}/ioncube_loader_lin_5.6.so
 cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
 zend_extension=ioncube_loader_lin_5.6.so
 EOF
+#############################
 
+###########################################################
 cd ~
-#wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz
-#wget http://downloads.zend.com/guard/7.0.0/ZendGuard-7.0.0-linux.gtk.x86_64.tar.gz
-wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so  http://file.asuhu.com/so/zend/ZendGuardLoader.so
-    if [ ! -e '/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so' ];then
-wget -O /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so  http://arv.asuhu.com/ftp/so/zend/ZendGuardLoader.so
+#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  并未支持PHP7 http://www.zend.com/en/products/loader/downloads#Linux
+#ZendGuardLoader安装  wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz
+#Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。仅支持NTS版本的PHP
+wget -t 3 -O ${php_extensions_path}/ZendGuardLoader.so  http://file.asuhu.com/so/zend/ZendGuardLoader.so
+    if [ ! -e "${php_extensions_path}/ZendGuardLoader.so" ];then
+wget -O "${php_extensions_path}/ZendGuardLoader.so"  http://arv.asuhu.com/ftp/so/zend/ZendGuardLoader.so
     fi
-chmod +x /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226/ZendGuardLoader.so
+chmod +x ${php_extensions_path}/ZendGuardLoader.so
 cat > /usr/local/php/etc/php.d/zend.ini << EOF
 [Zend Guard]
 zend_extension = ZendGuardLoader.so
@@ -248,7 +234,7 @@ zend_loader.disable_licensing = 0
 zend_loader.obfuscation_level_support = 3
 zend_loader.license_path =
 EOF
-
+###########################################################
 
 #为了避免冲突，snmp用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
@@ -257,17 +243,20 @@ extension = snmp.so
 EOF
 
 #安装phpredis
-source ~/sh/function.sh
-install_phpredis
-
-#解决phpcertificate问题
-source ~/sh/function.sh
-install_certificate
-
-#重启php，使php扩展生效
-/etc/init.d/php-fpm restart
+#source ~/sh/function.sh
+#install_phpredis
 
 #disable-maintainer-zts
-/root/php-${phpstable56}/libtool --finish /usr/local/php/lib
-echo "/usr/local/php/lib" > /etc/ld.so.conf.d/php.conf
+#libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
+#/usr/bin/libtool --version    ltmain.sh (GNU libtool) 2.2.6b
+#/root/php/libtool --version   ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
+
+cd ~
+if ! which libtool;then yum -y install libtool;fi
+libtool --finish /usr/local/php/lib
+/etc/init.d/php-fpm restart
+#path
+echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile
+source /etc/profile
 /usr/local/php/bin/php --version
+rm -rf php-${phpstable56}

@@ -1,26 +1,49 @@
 #!/bin/bash
-#centos6 7
+#CentOS 6 7
+#https://dev.mysql.com/downloads/mysql/5.7.html
+#
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
-sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
+sqlpass=$(date +%s%N | sha256sum | base64 | head -c 15)
+if [ -z ${sqlpass} ];then
+sqlpass='R0JZrvdUt&P@WlHs'
+fi
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-sqlstable57=5.7.21
-
-if [ "$Mem" -le 3000 ]; then
-echo -e "\033[31m Install MySQL-5.7 Memory less than 3000MB \033[0m \n"
-exit 1
+#define
+mysql_install_dir=/usr/local/mysql
+mysql_data_dir=/data/mysql
+#
+#mysql account
+    id -u mysql >/dev/null 2>&1
+    [ $? -ne 0 ] && useradd -M -s /sbin/nologin mysql
+#folder
+  [ ! -d "${mysql_install_dir}" ] && mkdir -p ${mysql_install_dir} && chown mysql.mysql -R ${mysql_install_dir} 
+  mkdir -p ${mysql_data_dir} && chown mysql.mysql -R ${mysql_data_dir}
+#
+sqlstable57=$(curl -s https://dev.mysql.com/downloads/mysql/5.7.html#downloads | grep "<h1>MySQL Community Server" | awk '{print $4}')
+if [ -z ${sqlstable57} ] ;then
+sqlstable57=5.7.27
+echo "Install MySQL Community Server 5.7.27"
+else
+echo "Install MySQL Community Server ${sqlstable57}"
 fi
 
-yum -y install gcc gcc-c++ ncurses ncurses-devel cmake
-yum -y install numactl  #/usr/local/mysql/bin/mysqld: error while loading shared libraries: libnuma.so.1
-mkdir -p /data/mysql
-cd ~
-#https://dev.mysql.com/downloads/mysql/
-wget http://cdn.mysql.com//Downloads/MySQL-5.7/mysql-boost-${sqlstable57}.tar.gz
-tar -zxf mysql-boost-${sqlstable57}.tar.gz && rm -rf mysql-boost-${sqlstable57}.tar.gz
-cd mysql-${sqlstable57}
+yum -y install gcc gcc-c++ ncurses ncurses-devel cmake curl openssl openssl-devel wget python net-tools
+yum -y install numactl                                  #/usr/local/mysql/bin/mysqld: error while loading shared libraries: libnuma.so.1
 
-cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
--DMYSQL_DATADIR=/data/mysql \
+if [ ! -e '/usr/bin/wget' ]; then yum -y install wget; fi
+
+#内存太小会Killed，c++: internal compiler error: Killed (program cc1plus)
+if [ "$Mem" -le 2000 ]; then
+echo -e "\033[31m Install MySQL Community Server 5.7 Memory Less Than 2000MB ... \033[0m \n"
+kill -9 $$
+fi
+
+cd ~
+wget -q -4 http://cdn.mysql.com//Downloads/MySQL-5.7/mysql-boost-${sqlstable57}.tar.gz
+tar -zxf mysql-boost-${sqlstable57}.tar.gz && rm -rf mysql-boost-${sqlstable57}.tar.gz
+cd ~/mysql-${sqlstable57}
+cmake . -DCMAKE_INSTALL_PREFIX=${mysql_install_dir} \
+-DMYSQL_DATADIR=${mysql_data_dir} \
 -DDOWNLOAD_BOOST=1 \
 -DWITH_BOOST=./boost \
 -DSYSCONFDIR=/etc \
@@ -35,31 +58,22 @@ cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
 -DDEFAULT_COLLATION=utf8mb4_general_ci \
 -DWITH_EMBEDDED_SERVER=1 \
 -DEXTRA_CHARSETS=all
-make -j$a
-make install
+make -j ${a} && make install
 
-if [ ! -e '/usr/local/mysql/bin/mysql' ]; then
-echo -e "\033[31m Install mysql5.7 error ... \033[0m \n"
-exit 1
+if [ ! -e "${mysql_install_dir}/bin/mysql" ]; then
+echo -e "\033[31m Install MySQL Community Server 5.7 Install Error ... \033[0m \n"
+kill -9 $$
 fi
 
-
-#添加环境变量 mysql用户 权限
-echo 'export PATH=/usr/local/mysql/bin/:$PATH'>>/etc/profile;
-source /etc/profile;
-    id -u mysql >/dev/null 2>&1
-    [ $? -ne 0 ] && useradd -M -s /sbin/nologin mysql
-chown mysql.mysql -R /data/mysql;chown mysql.mysql -R /usr/local/mysql
-
-
-
-#mysql守护设置
-/bin/cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld
+#MySQL Community Server 5.7 mysqld
+cp ${mysql_install_dir}/support-files/mysql.server /etc/init.d/mysqld
 chmod +x /etc/init.d/mysqld
-chkconfig --add mysqld
-chkconfig mysqld on
+chkconfig --add mysqld && chkconfig mysqld on
+ sed -i "s@^basedir=.*@basedir=${mysql_install_dir}@" /etc/init.d/mysqld
+ sed -i "s@^datadir=.*@datadir=${mysql_data_dir}@" /etc/init.d/mysqld
 
-#my.cnf配置
+
+#MySQL Community Server 5.7 my.cnf配置
 cat > /etc/my.cnf << EOF
 [client]
 port = 3306
@@ -71,13 +85,12 @@ prompt="MySQL [\\d]> "
 no-auto-rehash
 
 [mysqld]
-#/usr/share/zoneinfo/Asia/Shanghai
 #default_time_zone=Asia/Shanghai
 port = 3306
 socket = /tmp/mysql.sock
-basedir = /usr/local/mysql
-datadir = /data/mysql
-pid-file = /data/mysql/mysql.pid
+basedir = ${mysql_install_dir}
+datadir = ${mysql_data_dir}
+pid-file = ${mysql_data_dir}/mysql.pid
 user = mysql
 bind-address = 0.0.0.0
 server-id = 1
@@ -88,7 +101,7 @@ skip-name-resolve
 #skip-networking
 back_log = 300
 
-max_connections = 1000
+max_connections = 2000
 max_connect_errors = 6000
 open_files_limit = 65535
 table_open_cache = 128
@@ -111,12 +124,12 @@ query_cache_limit = 2M
 ft_min_word_len = 4
 log_bin = mysql-bin
 binlog_format = mixed
-expire_logs_days = 30
+expire_logs_days = 60
 
-log_error = /data/mysql/mysql-error.log
+log_error = ${mysql_data_dir}/mysql-error.log
 slow_query_log = 1
 long_query_time = 1
-slow_query_log_file = /data/mysql/mysql-slow.log
+slow_query_log_file = ${mysql_data_dir}/mysql-slow.log
 performance_schema = 0
 explicit_defaults_for_timestamp
 
@@ -159,10 +172,11 @@ read_buffer = 4M
 write_buffer = 4M
 EOF
 
-#初始化信息
-/usr/local/mysql/bin/mysqld --initialize-insecure --user=mysql --basedir=/usr/local/mysql --datadir=/data/mysql
-chown -R mysql.mysql  /usr/local/mysql
-chown -R mysql.mysql  /data/mysql
+#初始化MySQL Community Server 5.7
+#初始化-initial-insecure创建空密码的 root@localhost，--initialize创建带密码的 root@localhost，密码在log-error日志文件中（在5.6版本中是放在 ~/.mysql_secret 文件中）
+chown -R mysql.mysql ${mysql_install_dir} && chown -R mysql.mysql  ${mysql_data_dir}
+${mysql_install_dir}/bin/mysqld --initialize-insecure --user=mysql --basedir=${mysql_install_dir} --datadir=${mysql_data_dir}
+
 #优化相关参数
 if [ $Mem -gt 1500 -a $Mem -le 2500 ];then
     sed -i 's@^thread_cache_size.*@thread_cache_size = 16@' /etc/my.cnf
@@ -190,16 +204,39 @@ elif [ $Mem -gt 3500 ];then
     sed -i 's@^table_open_cache.*@table_open_cache = 1024@' /etc/my.cnf
 fi
 /etc/init.d/mysqld restart
-/usr/local/mysql/bin/mysqladmin -uroot -p password "$sqlpass";
-/usr/local/mysql/bin/mysql -uroot -p${sqlpass} <<EOF
-drop database if exists test;
-delete from mysql.user where not (user='root');
-#delete from mysql.user where password='';
-#ERROR 1054 (42S22) at line 3: Unknown column 'password' in 'where clause'
-delete from mysql.db where user='';
-flush privileges;
-exit
-EOF
-echo -e "mysql root password  \033[41;36m  $sqlpass  \033[0m";
-#select user,host from mysql.user;
-/usr/local/mysql/bin/mysql --version
+
+if [ ! -e "${mysql_data_dir}/mysql.pid" ]; then
+echo -e "\033[31m MySQL Community Server ${sqlstable57} Config Error ... \033[0m \n"
+kill -9 $$
+fi
+
+#修改默认为空的密码，添加root@127.0.0.1
+${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'127.0.0.1' identified by \"${sqlpass}\" with grant option;"
+${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'localhost' identified by \"${sqlpass}\" with grant option;"
+
+#下面两行操作会出现[Warning] Using a password on the command line interface can be insecure.
+${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "reset master;"
+${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "select user,host from mysql.user;"
+
+  [ -e "${mysql_install_dir}/my.cnf" ] && rm -f ${mysql_install_dir}/my.cnf
+rm -rf /etc/ld.so.conf.d/{mysql,mariadb,percona,alisql}*.conf
+echo "${mysql_install_dir}/lib" > /etc/ld.so.conf.d/mysql.conf
+ldconfig
+
+echo -e "MySQL Community Server ${sqlstable57} root password  \033[41;36m  $sqlpass  \033[0m";
+${mysql_install_dir}/bin/mysql --version
+#
+#############################MYSQL5.7安装完后
+#用户名	          主机名	密码	全局权限 	
+#mysql.session	localhost	是	SUPER
+#mysql.sys	localhost	是	USAGE
+#root	        localhost	是	ALL PRIVILEGES
+#############################
+#cat /proc/$(cat /data/mysql/mysql.pid)/limits
+#${mysql_install_dir}/bin/mysqladmin -uroot -p password "${sqlpass}"; #必须按回车才能确认修改密码
+cd ~
+rm -rf mysql-${sqlstable57}
+#添加环境变量
+echo "export PATH=${mysql_install_dir}/bin/:$PATH">>/etc/profile && source /etc/profile
+source /etc/profile
+service mysqld stop    #不然会卡在./mysql.sh 2>&1 | tee mysql.log

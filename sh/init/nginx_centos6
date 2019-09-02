@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # nginx - this script starts and stops the nginx daemon
 #

@@ -1,21 +1,43 @@
 #!/bin/bash
-#https://dev.mysql.com/downloads/mysql/5.6.html#downloads
+#CentOS 6 7
+#https://dev.mysql.com/downloads/mysql/5.6.html
+#
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
+if [ -z ${sqlpass} ];then
+sqlpass='R0JZrvdUt&P@WlHs'
+fi
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-sqlstable=5.6.39
-
-if [ ! -e '/usr/bin/wget' ]; then
-yum -y install wget
+#define
+mysql_install_dir=/usr/local/mysql
+mysql_data_dir=/usr/local/mysql/data
+#
+#mysql account
+    id -u mysql >/dev/null 2>&1
+    [ $? -ne 0 ] && useradd -M -s /sbin/nologin mysql
+#folder
+  [ ! -d "${mysql_install_dir}" ] && mkdir -p ${mysql_install_dir} && chown mysql.mysql -R ${mysql_install_dir} 
+  mkdir -p ${mysql_data_dir} && chown mysql.mysql -R ${mysql_data_dir}
+#
+sqlstable=$(curl -s https://dev.mysql.com/downloads/mysql/5.6.html#downloads | grep "<h1>MySQL Community Server" | awk '{print $4}')
+if [ -z ${sqlstable} ] ;then
+sqlstable=5.6.45
+echo "Install MySQL Community Server 5.6.45"
+else
+echo "Install MySQL Community Server ${sqlstable}"
 fi
 
-yum -y install cmake gcc-c++ ncurses-devel
+yum -y install cmake gcc-c++ ncurses-devel cmake curl openssl openssl-devel wget python net-tools
+yum -y install autoconf   #FATAL ERROR: please install the following Perl modules before executing /usr/local/mysql/scripts/mysql_install_db
+
+if [ ! -e '/usr/bin/wget' ]; then yum -y install wget; fi
+
 cd ~
-wget -4 http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${sqlstable}.tar.gz
+wget -q -4 http://cdn.mysql.com/Downloads/MySQL-5.6/mysql-${sqlstable}.tar.gz
 tar -zxf mysql-${sqlstable}.tar.gz && rm -rf mysql-${sqlstable}.tar.gz
 cd mysql-${sqlstable}
-cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
--DMYSQL_DATADIR=/usr/local/mysql/data \
+cmake . -DCMAKE_INSTALL_PREFIX=${mysql_install_dir} \
+-DMYSQL_DATADIR=${mysql_data_dir} \
 -DSYSCONFDIR=/etc \
 -DWITH_INNOBASE_STORAGE_ENGINE=1 \
 -DWITH_PARTITION_STORAGE_ENGINE=1 \
@@ -28,26 +50,22 @@ cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
 -DDEFAULT_COLLATION=utf8mb4_general_ci \
 -DWITH_EMBEDDED_SERVER=1 \
 -DEXTRA_CHARSETS=all
-make -j$a
-make install
+make -j ${a} && make install
 
-if [ ! -e '/usr/local/mysql/bin/mysql' ]; then
-echo -e "\033[31m Install mysql5.6 error ... \033[0m \n"
-exit
+if [ ! -e "${mysql_install_dir}/bin/mysql" ]; then
+echo -e "\033[31m Install MySQL Community Server ${sqlstable} Install ERROR ... \033[0m \n"
+     kill -9 $$
 fi
 
-
-echo 'export PATH=/usr/local/mysql/bin/:$PATH'>>/etc/profile;
-source /etc/profile;
-    id -u mysql >/dev/null 2>&1
-    [ $? -ne 0 ] && useradd -M -s /sbin/nologin mysql
-chown -R mysql.mysql /usr/local/mysql/;
-
-/bin/cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld;
+#MySQL Community Server 5.6 mysqld
+/bin/cp ${mysql_install_dir}/support-files/mysql.server /etc/init.d/mysqld;
 chmod +x /etc/init.d/mysqld;
 chkconfig --add mysqld; chkconfig mysqld on;
 mv /etc/my.cnf /etc/my.cnf.bak
+ sed -i "s@^basedir=.*@basedir=${mysql_install_dir}@" /etc/init.d/mysqld
+ sed -i "s@^datadir=.*@datadir=${mysql_data_dir}@" /etc/init.d/mysqld
 
+#MySQL Community Server 5.6 my.cnf配置
 cat > /etc/my.cnf << EOF
 [client]
 port = 3306
@@ -59,12 +77,11 @@ prompt="MySQL [\\d]> "
 no-auto-rehash
 
 [mysqld]
-#/usr/share/zoneinfo/Asia/Shanghai
 port = 3306
 socket = /tmp/mysql.sock
-basedir = /usr/local/mysql
-datadir = /usr/local/mysql/data
-pid-file = /usr/local/mysql/data/mysql.pid
+basedir = ${mysql_install_dir}
+datadir = ${mysql_data_dir}
+pid-file = ${mysql_data_dir}/mysql.pid
 user = mysql
 bind-address = 0.0.0.0
 server-id = 1
@@ -100,10 +117,10 @@ ft_min_word_len = 4
 log_bin = mysql-bin
 binlog_format = mixed
 expire_logs_days = 30
-log_error = /usr/local/mysql/data/mysql-error.log
+log_error = ${mysql_data_dir}/mysql-error.log
 slow_query_log = 1
 long_query_time = 1
-slow_query_log_file = /usr/local/mysql/data/mysql-slow.log
+slow_query_log_file = ${mysql_data_dir}/mysql-slow.log
 performance_schema = 0
 explicit_defaults_for_timestamp
 #lower_case_table_names = 1
@@ -139,10 +156,13 @@ read_buffer = 4M
 write_buffer = 4M
 EOF
 
+#初始化MySQL Community Server 5.6
+#初始化-initial-insecure创建空密码的 root@localhost，--initialize创建带密码的 root@localhost，密码在log-error日志文件中（在5.6版本中是放在 ~/.mysql_secret 文件中）
 yum -y install perl
-/usr/local/mysql/scripts/mysql_install_db --defaults-file=/etc/my.cnf  --basedir=/usr/local/mysql --datadir=/usr/local/mysql/data
-chown -R mysql.mysql  /usr/local/mysql
+chown -R mysql.mysql  ${mysql_install_dir}  && chown -R mysql.mysql  ${mysql_data_dir}
+${mysql_install_dir}/scripts/mysql_install_db --defaults-file=/etc/my.cnf  --basedir=${mysql_install_dir} --datadir=${mysql_data_dir}
 
+#优化相关参数
 if [ $Mem -gt 1500 -a $Mem -le 2500 ];then
     sed -i 's@^thread_cache_size.*@thread_cache_size = 16@' /etc/my.cnf
     sed -i 's@^query_cache_size.*@query_cache_size = 16M@' /etc/my.cnf
@@ -168,22 +188,64 @@ elif [ $Mem -gt 3500 ];then
     sed -i 's@^tmp_table_size.*@tmp_table_size = 128M@' /etc/my.cnf
     sed -i 's@^table_open_cache.*@table_open_cache = 1024@' /etc/my.cnf
 fi
-service mysqld restart
+/etc/init.d/mysqld restart
 
-if [ ! -e '/usr/local/mysql/data/mysql.pid' ]; then
-echo -e "\033[31m config mysql error ... \033[0m \n"
-exit 1
+if [ ! -e "${mysql_data_dir}/mysql.pid" ]; then
+echo -e "\033[31m Install MySQL Community Server ${sqlstable} Config Error ... \033[0m \n"
+kill -9 $$
 fi
 
-/usr/local/mysql/bin/mysqladmin -uroot -p password "$sqlpass";
-/usr/local/mysql/bin/mysql -uroot -p${sqlpass} <<EOF
-drop database if exists test;
-delete from mysql.user where not (user='root');
-delete from mysql.user where password='';
-delete from mysql.db where user='';
-flush privileges;
-exit
-EOF
-echo -e "mysql root password  \033[41;36m  $sqlpass  \033[0m";
+#${mysql_install_dir}/bin/mysqladmin -uroot -p password "$sqlpass";  #这样需要手动按回车键才可以继续
+#修改默认为空的密码，添加root@127.0.0.1
+ ${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'127.0.0.1' identified by \"${sqlpass}\" with grant option;"
+ ${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'localhost' identified by \"${sqlpass}\" with grant option;"
+ ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "delete from mysql.user where Password='';"
+ ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "delete from mysql.db where User='';"
+ ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "delete from mysql.proxies_priv where Host!='localhost';"
+ ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "drop database test;"
+ ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "reset master;"
+ ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "select user,host from mysql.user;"
+#${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} <<EOF
+#drop database if exists test;
+#delete from mysql.user where not (user='root');
+#delete from mysql.user where password='';
+#delete from mysql.db where user='';
+#delete from mysql.proxies_priv where Host!='localhost';
+#reset master;
+#flush privileges;
+#exit
+#EOF
+#
+#################默认安装完成的Mysql5.6数据库
+#       用户名	主机名          	密码	全局权限 	授权
+#	任意	%	                否	USAGE	        否
+#	任意	izj6cer1t2ub255k466jyoz	否	USAGE    	否
+#	任意	localhost        	否	USAGE	        否
+#	root	127.0.0.1        	否	ALL PRIVILEGES	是
+#	root	::1              	否	ALL PRIVILEGES	是
+#	root	izj6cer1t2ub255k466jyoz	否	ALL PRIVILEGES	是
+#	root	localhost       	是	ALL PRIVILEGES	是
+#################
 #select user,host from mysql.user;
-/usr/local/mysql/bin/mysql --version
+#/usr/local/mysql/my.cnf # http://dev.mysql.com/doc/refman/5.6/en/server-configuration-defaults.html
+#
+#/usr/local/mysql/bin/mysql_secure_installation
+#which will also give you the option of removing the test databases and anonymous user created by default.  This is strongly recommended for production servers.
+#
+#You can test the MySQL daemon with mysql-test-run.pl
+#cd /usr/local/mysql/mysql-test ; perl mysql-test-run.pl
+
+rm -rf /etc/ld.so.conf.d/{mysql,mariadb,percona,alisql}*.conf;
+[ -e "${mysql_install_dir}/my.cnf" ] && rm -f ${mysql_install_dir}/my.cnf;
+echo "${mysql_install_dir}/lib" > /etc/ld.so.conf.d/mysql.conf;
+ldconfig;
+#
+echo -e "MySQL Community Server ${sqlstable} root password  \033[41;36m  $sqlpass  \033[0m";
+${mysql_install_dir}/bin/mysql --version
+#
+cd ~
+rm -rf mysql-${sqlstable}
+#添加环境变量
+echo "export PATH=${mysql_install_dir}/bin/:$PATH">>/etc/profile && source /etc/profile
+source /etc/profile
+service mysqld stop    #不然会卡在./mysql.sh 2>&1 | tee mysql.log

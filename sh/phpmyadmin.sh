@@ -1,6 +1,17 @@
 #!/bin/bash
-pmaversion=`curl -s https://www.phpmyadmin.net/files/ | awk -F\> '/\/files\//{print $3}'|grep -v '^$'|cut -d'<' -f1 | sort -V | tail -1`
+if [ -d /home/wwwroot/web ];then
 webdir=/home/wwwroot/web
+elif [ -d /home/wwwroot/default ];then
+webdir=/home/wwwroot/default
+fi
+#
+pmaversion=`curl -s https://www.phpmyadmin.net/files/ | awk -F\> '/\/files\//{print $3}'|grep -v '^$'|cut -d'<' -f1 | sort -V | tail -1`
+if [ -z ${pmaversion} ];then
+pmaversion=4.8.0.1
+else
+echo "phpmyadmin version check ok"
+fi
+#
 a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
@@ -22,6 +33,12 @@ sed -i "s@SaveDir.*@SaveDir'\] = 'save';@" $webdir/phpMyAdmin/config.inc.php
 sed -i "s@blowfish_secret.*;@blowfish_secret\'\] = \'`cat /dev/urandom | head -1 | md5sum | head -c 55`\';@" config.inc.php
 # 配置文件中的密文(blowfish_secret)太短。
 cd $webdir
+id -u www >/dev/null 2>&1
+if [ $? -eq 0 ];then
 chown -R www.www $webdir/phpMyAdmin
-chmod o-rw ./phpMyAdmin/config.inc.php
-chmod -R 0 ./phpMyAdmin/setup 
+elif [ $? -ne 0 ];then
+chown -R apache.apache $webdir/phpMyAdmin
+fi
+##
+chmod o-rw ${webdir}/phpMyAdmin/config.inc.php
+chmod -R 0 ${webdir}/phpMyAdmin/setup 

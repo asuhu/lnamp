@@ -1,8 +1,12 @@
 #!/bin/bash
+cores=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+cname=$( cat /proc/cpuinfo | grep 'model name' | uniq | awk -F : '{print $2}')
+tram=$( free -m | awk '/Mem/ {print $2}' )
+
 #如果没有/etc/redhat-release，则退出
 if [ ! -e '/etc/redhat-release' ]; then
 echo "Only Support CentOS6 CentOS7 RHEL6 RHEL7"
-exit
+     kill -9 $$
 fi
 
 #Check if user is root
@@ -22,19 +26,15 @@ alias lh='l | head'
 alias vi=vim
 EOF
 
-
-#增加swap
+#add swap
 source ~/sh/swap.sh
 lscpu  >/dev/null 2>&1
 [ $? -eq 0 ] && install_swap
 
-cores=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
-cname=$( cat /proc/cpuinfo | grep 'model name' | uniq | awk -F : '{print $2}')
-tram=$( free -m | awk '/Mem/ {print $2}' )
-swap=$( free -m | awk '/Swap/ {print $2}' )
 
 yum remove httpd* php* mysql-server mysql* php-mysql -y
 yum -y groupremove "FTP Server" "PostgreSQL Database client" "PostgreSQL Database server" "MySQL Database server" "MySQL Database client" "Web Server" "Office Suite and Productivity" "E-mail server" "Ruby Support" "Printing client"
+yum -y install curl wget gcc screen python gcc-c++ make vim screen git lsof net-tools
 
 #检测版本6还是7
 if  [ -n "$(grep ' 7\.' /etc/redhat-release)" ] ;then
@@ -48,34 +48,40 @@ next() {
     printf "%-70s\n" "-" | sed 's/\s/-/g'
 }
 
-#版本定义
-nginx_openssl=Nginx1.12.2
+#Display Version
+nginx_openssl=Nginx1.16
 apache=Apache2.2.34_prefork_No_Support_HTTP2
-apache_openssl=Apache2.4.29_event_HTTP2
-php5apache=PHP5.6.33_Only_Support_Apache
-php5=PHP5.6.33_Not_Support_Apache
-php7=PHP7.0.25_Not_Support_Apache
-mysql6=Mysql5.6.39
-mysql7=Mysql5.7.21
+apache_openssl='Apache2.4_latest_version_event_HTTP2'
+php5apache=PHP5.6_Apache
+php5=PHP5.6_Nginx
+php7=PHP7.2_Nginx_CentOS7
+mysql6='Mysql5.6_latest_version'
+mysql7='Mysql5.7_latest_version'
 
+
+#SSH优化
+sed -i 's@^#UseDNS yes@UseDNS no@' /etc/ssh/sshd_config
+sed -i 's@^GSSAPIAuthentication yes@GSSAPIAuthentication no@' /etc/ssh/sshd_config
+#关闭安全上下文
+setenforce 0
+sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
+#/usr/sbin/sestatus -v  or getenforce
+#SSH port netstat -nxltp | grep sshd | head -1 | awk '{print $4}' | cut -d: -f2
+chmod +x ./sh/*.sh
+
+#Version 6
     if [ -f /etc/redhat-release -a -n "$(grep ' 6\.' /etc/redhat-release)" ]; then
-
-#netstat -nxltp | grep sshd | head -1 | awk '{print $4}' | cut -d: -f2
-echo -e "\033[41;36m  Your system version is 6  \033[0m";
+cversion=$(cat /etc/redhat-release)
+echo -e " Your System Version is \033[41;36m ${cversion}  \033[0m";
  [ -z "`grep ^Port /etc/ssh/sshd_config`" ] && ssh_port=22 || ssh_port=`grep ^Port /etc/ssh/sshd_config | awk '{print $2}'`
 read -p "Please input new SSH port(Default: $ssh_port): " new_ssh_port
  [ -z "$new_ssh_port" ] && new_ssh_port=22
-   if [ $new_ssh_port -lt 1024 >/dev/null 2>&1 -o $new_ssh_port eq 22]; then
+   if [ $new_ssh_port -lt 1024 >/dev/null 2>&1 -o $new_ssh_port eq 22 ]; then
       echo "The port greater than 1024"
 exit
    fi
 echo -e "SSH port will change to $new_ssh_port"
 
-chmod +x ./sh/*.sh
-
-#SSH优化
-sed -i 's@^#UseDNS yes@UseDNS no@' /etc/ssh/sshd_config
-sed -i 's@^GSSAPIAuthentication yes@GSSAPIAuthentication no@' /etc/ssh/sshd_config
 iptables -I INPUT -p tcp -m tcp --dport "$new_ssh_port" -j ACCEPT
 service iptables save;service iptables restart;
   if [ -z "`grep ^Port /etc/ssh/sshd_config`" -a "$new_ssh_port" != '22' ]; then
@@ -83,29 +89,44 @@ service iptables save;service iptables restart;
   elif [ -n "`grep ^Port /etc/ssh/sshd_config`" ]; then
     sed -i "s@^Port.*@Port $new_ssh_port@" /etc/ssh/sshd_config
   fi
-#service sshd restart  配合后面的source 重启生效
-
 
 rm -rf /etc/localtime
 ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-yum -y groupremove "FTP Server" "PostgreSQL Database client" "PostgreSQL Database server" "MySQL Database server" "MySQL Database client" "Web Server" "Office Suite and Productivity" "Ruby Support"
-yum clean all
+yum install -y ntp
+ntpdate hk.pool.ntp.org
 yum -y install gcc gcc-c++ make vim screen python wget git lsof
 
+cat >> /etc/security/limits.conf <<EOF
+* soft nproc 65535  
+* hard nproc 65535  
+* soft nofile 65535  
+* hard nofile 65535  
+EOF
 
+echo "ulimit -SH 65535" >> /etc/rc.d/rc.local
+chmod +x /etc/rc.d/rc.local
+#soft 指的是当前系统生效的设置值
+#hard 表明系统中所能设定的最大值
+#nofile - 打开文件的最大数目  
+#noproc - 进程的最大数目
+#CentOS7 不再采取这样的limits
+
+
+#Version 7
       elif [ -f /etc/redhat-release -a -n "$(grep ' 7\.' /etc/redhat-release)" ]; then
-chmod +x ./sh/*.sh
-echo -e "\033[41;36m  Your System Version is 7  \033[0m";
+cversion=$(cat /etc/redhat-release)
+#netstat -nxltp | grep sshd | head -1 | awk '{print $4}' | cut -d: -f2
+echo -e " Your System Version is \033[41;36m ${cversion}  \033[0m";
 
 #判断CentOS7的防火墙状态
-systemctl status firewald
+systemctl status firewald 2>&1 >/dev/null
 if [ ! $? -eq 0 ] ;then
  [ -z "`grep ^Port /etc/ssh/sshd_config`" ] && ssh_port=22 || ssh_port=`grep ^Port /etc/ssh/sshd_config | awk '{print $2}'`
 read -p "Please input new SSH port(Default: $ssh_port): " new_ssh_port
  [ -z "$new_ssh_port" ] && new_ssh_port=22
-   if [ $new_ssh_port -lt 1024 >/dev/null 2>&1 -o $new_ssh_port eq 22]; then
+   if [ $new_ssh_port -lt 1024 >/dev/null 2>&1 -o $new_ssh_port eq 22 ]; then
       echo "The port greater than 1024"
-exit 1
+      exit 1
    fi
   if [ -z "`grep ^Port /etc/ssh/sshd_config`" -a "$new_ssh_port" != '22' ]; then
     sed -i "s@^#Port.*@&\nPort $new_ssh_port@" /etc/ssh/sshd_config
@@ -115,27 +136,18 @@ exit 1
 fi
 
 
-#SSH优化
-sed -i 's@^#UseDNS yes@UseDNS no@' /etc/ssh/sshd_config
-sed -i 's@^GSSAPIAuthentication yes@GSSAPIAuthentication no@' /etc/ssh/sshd_config
 timedatectl set-timezone Asia/Shanghai
-
-#systemctl restart sshd 重启生效
-
 yum -y remove mariadb-libs-5.5.41-2.el7_0.x86_64
 yum install -y perl-Module-Install.noarch lsof
 #FATAL ERROR: please install the following Perl modules before executing /usr/local/mysql/scripts/mysql_install_db:
     fi
 
 
-#关闭安全上下文
-setenforce 0
-sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
-
 #清屏
 clear
 
 next
+swap=$( free -m | awk '/Swap/ {print $2}' )
 echo "Total amount of Mem  : $tram MB"
 echo "Total amount of Swap : $swap MB"
 echo "CPU model            : $cname"
@@ -143,8 +155,7 @@ echo "Number of cores      : $cores"
 sleep 1
 next
 
-#################################################################
-#菜单
+#menu
   read -p "Do you want to install Web server? [y/n]: " Web_yn
   if [[ ! $Web_yn =~ ^[y,n]$ ]]; then
     echo "input error! Please only input 'y' or 'n'"
@@ -156,7 +167,7 @@ exit 1
         echo -e "\033[33m 2 $apache_openssl \033[0m"
         echo -e "\033[31m 3 $nginx_openssl \033[0m"
         echo -e "\033[31m 4 Yum install nginx php mysql \033[0m"
-	echo -e "\033[36m 5 Tomcat8 \033[0m"
+	echo -e "\033[31m 5 Tomcat8 \033[0m"
         read -p "Please input a number:(Default 3 press Enter) " Web_version
         [ -z "$Web_version" ] && Web_version=3
         if [[ ! $Web_version =~ ^[1-5]$ ]]; then
@@ -205,22 +216,10 @@ exit 1
   fi 
 
 
-cat >> /etc/security/limits.conf <<EOF
-* soft nproc 65535  
-* hard nproc 65535  
-* soft nofile 65535  
-* hard nofile 65535  
-EOF
-
-echo "ulimit -SH 65535" >> /etc/rc.d/rc.local
-chmod +x /etc/rc.d/rc.local
-#soft 指的是当前系统生效的设置值  hard 表明系统中所能设定的最大值
-#nofile - 打开文件的最大数目  noproc - 进程的最大数目
 
 
-
-echo -e "\033[31m 10s later will install \033[0m"
- sleep 10
+echo -e "\033[31m 5s later will install \033[0m"
+ sleep 5
 
 #Web server
    if [ "$Web_version" == '1' ]; then
@@ -244,16 +243,13 @@ fi
 ./sh/php7.sh 2>&1 | tee php7.log;
 fi
  
-#数据库
+#mysql
   if [ "$Db_version" == '1' ]; then
 echo do not install database
 elif [ "$Db_version" == '2' ]; then
- ./sh/mysql.sh 2>&1 |tee mysql.log;
+ ./sh/mysql.sh 2>&1 |tee mysql.log
   elif [ "$Db_version" == '3' ]; then
- ./sh/mysql5.7.sh 2>&1 |tee mysql.log;
+ ./sh/mysql5.7.sh 2>&1 |tee mysql.log
   elif [ "$Db_version" == '4' ]; then
- ./sh/mysql5.7_binary.sh 2>&1 |tee mysql.log;
+ ./sh/mysql5.7_binary.sh 2>&1 |tee mysql.log
 fi
-
-# ps -ef | grep *.sh|grep -v grep  无法退出脚本
-#root      1800  1791  0 16:33 pts/1    00:00:00 bash install.sh
