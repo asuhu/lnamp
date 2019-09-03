@@ -27,6 +27,20 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/u
 --enable-ftp --enable-gd-native-ttf --enable-pcntl --enable-sockets --enable-zip --enable-soap --enable-exif \
 --disable-ipv6 --disable-debug --disable-fileinfo -with-gmp --disable-maintainer-zts
 #
+make -j${a} && make install
+#
+mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
+#添加用户和权限www.www
+    id -u www >/dev/null 2>&1
+    [ $? -ne 0 ] && useradd -M -s /sbin/nologin www
+chown www.www -R /usr/local/php;
+
+#检测php是否安装成功
+if [ ! -e '/usr/local/php/bin/phpize' ]; then
+echo -e "\033[31m Install PHP Error ... \033[0m \n"
+kill -9 $$
+fi
+#
 cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf;          #修改fpm配置php-fpm.conf.default文件名称
 cp /root/php-5.6.40/php.ini-production /usr/local/php/etc/php.ini;                   #复制php.ini配置文件
 cp /root/php-5.6.40/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm;                     #复制php-fpm启动脚本到init.d
@@ -116,8 +130,8 @@ sed -i "s@^;curl.cainfo.*@curl.cainfo = /usr/local/openssl/cert.pem@" /usr/local
 sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
 
 #
-yum -y install autoconf
 
+yum -y install autoconf
 cd ~/php-5.6.40/ext/fileinfo
 /usr/local/php/bin/phpize
 ./configure --with-php-config=/usr/local/php/bin/php-config
