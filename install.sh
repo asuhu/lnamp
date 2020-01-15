@@ -1,5 +1,5 @@
 #!/bin/bash
-cores=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 cname=$( cat /proc/cpuinfo | grep 'model name' | uniq | awk -F : '{print $2}')
 tram=$( free -m | awk '/Mem/ {print $2}' )
 
@@ -31,6 +31,12 @@ source ~/sh/swap.sh
 lscpu  >/dev/null 2>&1
 [ $? -eq 0 ] && install_swap
 
+#cd ~
+#wget http://mirrors.nju.edu.cn/gnu/libtool/libtool-2.4.6.tar.gz
+#tar -zxvf libtool-2.4.6.tar.gz
+#cd libtool-2.4.6
+#./configure --prefix=/usr
+#make && make install
 
 yum remove httpd* php* mysql-server mysql* php-mysql -y
 yum -y groupremove "FTP Server" "PostgreSQL Database client" "PostgreSQL Database server" "MySQL Database server" "MySQL Database client" "Web Server" "Office Suite and Productivity" "E-mail server" "Ruby Support" "Printing client"
@@ -53,8 +59,8 @@ nginx_openssl=Nginx1.16
 apache=Apache2.2.34_prefork_No_Support_HTTP2
 apache_openssl='Apache2.4_latest_version_event_HTTP2'
 php5apache=PHP5.6_Apache
-php5=PHP5.6_Nginx
-php7=PHP7.2_Nginx_CentOS7
+php5=PHP5.6.40_Nginx
+php7=PHP7.3_Nginx_CentOS7
 mysql6='Mysql5.6_latest_version'
 mysql7='Mysql5.7_latest_version'
 
@@ -151,7 +157,7 @@ swap=$( free -m | awk '/Swap/ {print $2}' )
 echo "Total amount of Mem  : $tram MB"
 echo "Total amount of Swap : $swap MB"
 echo "CPU model            : $cname"
-echo "Number of cores      : $cores"
+echo "Number of cores      : $THREAD"
 sleep 1
 next
 

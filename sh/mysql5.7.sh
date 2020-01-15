@@ -2,7 +2,7 @@
 #CentOS 6 7
 #https://dev.mysql.com/downloads/mysql/5.7.html
 #
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 15)
 if [ -z ${sqlpass} ];then
 sqlpass='R0JZrvdUt&P@WlHs'
@@ -58,7 +58,7 @@ cmake . -DCMAKE_INSTALL_PREFIX=${mysql_install_dir} \
 -DDEFAULT_COLLATION=utf8mb4_general_ci \
 -DWITH_EMBEDDED_SERVER=1 \
 -DEXTRA_CHARSETS=all
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 if [ ! -e "${mysql_install_dir}/bin/mysql" ]; then
 echo -e "\033[31m Install MySQL Community Server 5.7 Install Error ... \033[0m \n"

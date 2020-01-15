@@ -2,7 +2,8 @@
 #used epel-release
 #https://www.php.net/supported-versions.php
 #PHP 5.6.40 is the last scheduled release of PHP 5.6 branch  matching OpenSSL1.0.2
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
 phpstable56=5.6.40
@@ -52,8 +53,9 @@ install_phpmcrypt
 install_phpopenssl
 install_curl
 
+#Download PHP5
 cd ~
-wget -4 -q http://hk2.php.net/distributions/php-${phpstable56}.tar.gz  #wget -4 http://www.php.net/distributions/php-${phpstable56}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable56}.tar.gz
+wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${phpstable56}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable56}.tar.gz
 tar -zxf php-${phpstable56}.tar.gz && rm -rf php-${phpstable56}.tar.gz
 cd php-${phpstable56}
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/usr/local/php/etc \
@@ -74,7 +76,7 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/u
 #--with-ldap \
 #--with-ldap-sasl \
 
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
 #添加用户和权限www.www
@@ -153,6 +155,7 @@ EOF
 
 
 #memory_limit顾名思义，这个值是用来限制PHP所占用的内存的，具体一点说就是一个PHP工作进程即php-fpm所能够使用的最大内存，默认是128MB，
+#php.ini优化
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
 sed -i "s@^memory_limit.*@memory_limit = 64M@" /usr/local/php/etc/php.ini
 elif [ $Mem -gt 2500 -a $Mem -le 3500 ];then

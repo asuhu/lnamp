@@ -2,7 +2,7 @@
 #Apache_APACHE2HANDLER
 #used epel-release
 #PHP 5.6.40 is the last scheduled release of PHP 5.6 branch  matching OpenSSL1.0.2
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
 phpstable56=5.6.40
@@ -56,7 +56,7 @@ install_curl
 
 
 cd ~
-wget -4 -q http://hk2.php.net/distributions/php-${phpstable56}.tar.gz  #wget -4 http://www.php.net/distributions/php-${phpstable56}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable56}.tar.gz
+wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${phpstable56}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable56}.tar.gz
 tar -zxf php-${phpstable56}.tar.gz && rm -rf php-${phpstable56}.tar.gz 
 cd php-${phpstable56}
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
@@ -75,7 +75,7 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
 --enable-ftp --enable-gd-native-ttf --enable-pcntl --enable-sockets --enable-zip --enable-soap --enable-exif \
 --disable-ipv6 --disable-debug --disable-fileinfo
 
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
 #添加用户和权限apache

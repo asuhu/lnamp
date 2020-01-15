@@ -1,5 +1,5 @@
 #!/bin/bash
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Bit=$(getconf LONG_BIT)
 ngstable=1.16.1
 zlibstable=1.2.11
@@ -52,8 +52,7 @@ cd ~
 tar -zxf zlib-${zlibstable}.tar.gz
 cd zlib-${zlibstable}
 ./configure --prefix=/usr/local/zlib
-make -j$a
-make install
+make -j ${THREAD} && make install
 echo "/usr/local/zlib/lib" > /etc/ld.so.conf.d/zlib.conf
 ldconfig
 
@@ -62,7 +61,7 @@ cd ~
 tar -zxf pcre-${pcrestable}.tar.gz
 cd pcre-${pcrestable}
 ./configure --prefix=/usr/local/pcre --enable-utf8
-make -j ${a} && make install
+make -j ${THREAD} && make install
 ~/pcre-${pcrestable}/libtool --finish  /usr/local/pcre/lib/
 echo "/usr/local/pcre/lib/" > /etc/ld.so.conf.d/pcre.conf
 ldconfig
@@ -71,6 +70,8 @@ ldconfig
 cd ~
 yum -y install gzip man
 tar -zxf nginx-${ngstable}.tar.gz                             #Copy NGINX manual page to /usr/share/man/man8:
+#sed -i 's@^#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "Microsoft-IIS/10.0/" NGINX_VERSION @g'  ~/nginx-${ngstable}/src/core/nginx.h
+
 cp -f ~/nginx-${ngstable}/man/nginx.8 /usr/share/man/man8
 gzip /usr/share/man/man8/nginx.8
 
@@ -99,9 +100,7 @@ cd ~/nginx-${ngstable}
 --with-stream_ssl_module \
 --with-stream_realip_module \
 --with-stream_ssl_preread_module
-
-#make && make install
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 
 #git clone https://github.com/cuber/ngx_http_google_filter_module

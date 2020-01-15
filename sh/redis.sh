@@ -1,12 +1,12 @@
 #!/bin/bash
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 yum -y install gcc gcc-c++ make vim screen python wget git lsof
 tram=$( free -m | awk '/Mem/ {print $2}' )
 cd ~
 wget http://download.redis.io/releases/redis-stable.tar.gz
 tar zxf redis-stable.tar.gz
 cd redis-stable
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 if [ -f "/root/redis-stable/src/redis-server" ]; then
 mkdir -p /usr/local/redis/{bin,etc,var}

@@ -1,5 +1,6 @@
 #!/bin/bash
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+#Apache httpd 2.2 End-of-Life The final release 2.2.34 was published in July 2017
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 apstable=2.2.34
 yum -y install gcc make epel-release  pcre-devel zlib-devel lynx openssl openssl-devel
 
@@ -52,7 +53,7 @@ cd httpd-$apstable;
         --enable-static-support \
         --enable-modules=all \
         --enable-mods-shared=all
-make -j ${a} && make install
+make -j ${THREAD} && make install
 cd ~
 
 if [ ! -e '/usr/local/apache/bin/httpd' ]; then

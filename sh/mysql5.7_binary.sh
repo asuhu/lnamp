@@ -2,7 +2,7 @@
 #CentOS 6 7
 #Generic #https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.24-linux-glibc2.12-x86_64.tar.gz
 #
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
 if [ -z ${sqlpass} ];then
 sqlpass='R0JZrvdUt&P@WlHs'

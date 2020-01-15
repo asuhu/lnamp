@@ -1,5 +1,5 @@
 #!/bin/bash
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 
 if ping -c 3 file.asuhu.com >/dev/null;then
 echo "website configuration files check ok"
@@ -10,7 +10,7 @@ fi
 
 apstable=$(curl -s https://httpd.apache.org/download.cgi#apache24 | grep "latest available version"| awk '{print $5}')
 if [ -z $apstable ];then
-apstable=2.4.37
+apstable=2.4.41
 else
 echo "Apache2.4 version check ok"
 fi
@@ -30,9 +30,9 @@ tar -zxf httpd-$apstable.tar.gz;rm -rf httpd-${apstable}.tar.gz;
 
 cd ~
 yum -y install expat-devel
-#http://archive.apache.org/dist/apr/apr-1.6.5.tar.gz
+#http://archive.apache.org/dist/apr/apr-1.7.0.tar.gz
 #http://archive.apache.org/dist/apr/apr-util-1.6.1.tar.gz
-aprversion=apr-1.6.5
+aprversion=apr-1.7.0
 aprutilversion=apr-util-1.6.1
 wget http://archive.apache.org/dist/apr/${aprversion}.tar.gz
 wget http://archive.apache.org/dist/apr/${aprutilversion}.tar.gz
@@ -67,7 +67,7 @@ cd httpd-$apstable;
 --enable-http2 \
 --enable-expires --enable-static-support --enable-suexec \
 --enable-modules=all --enable-mods-shared=all
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 cd ~
 

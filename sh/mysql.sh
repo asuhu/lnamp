@@ -2,7 +2,7 @@
 #CentOS 6 7
 #https://dev.mysql.com/downloads/mysql/5.6.html
 #
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
 if [ -z ${sqlpass} ];then
 sqlpass='R0JZrvdUt&P@WlHs'
@@ -21,8 +21,8 @@ mysql_data_dir=/usr/local/mysql/data
 #
 sqlstable=$(curl -s https://dev.mysql.com/downloads/mysql/5.6.html#downloads | grep "<h1>MySQL Community Server" | awk '{print $4}')
 if [ -z ${sqlstable} ] ;then
-sqlstable=5.6.45
-echo "Install MySQL Community Server 5.6.45"
+sqlstable=5.6.47
+echo "Install MySQL Community Server 5.6.46"
 else
 echo "Install MySQL Community Server ${sqlstable}"
 fi
@@ -50,7 +50,7 @@ cmake . -DCMAKE_INSTALL_PREFIX=${mysql_install_dir} \
 -DDEFAULT_COLLATION=utf8mb4_general_ci \
 -DWITH_EMBEDDED_SERVER=1 \
 -DEXTRA_CHARSETS=all
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 if [ ! -e "${mysql_install_dir}/bin/mysql" ]; then
 echo -e "\033[31m Install MySQL Community Server ${sqlstable} Install ERROR ... \033[0m \n"

@@ -1,11 +1,15 @@
 #!/bin/bash
 #enable epel-release
 #https://www.php.net/supported-versions.php
-#PHP7.2 matching OpenSSL1.1.1 
-a=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
+#PHP7.3 matching OpenSSL1.1.1 
+#https://www.php.net/manual/en/zip.installation.php
+#As of PHP 7.3.0, building against the bundled libzip is discouraged, but still possible by adding --without-libzip to the configuration.
+
+THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
-phpstable7=7.2.22
+
+
 
 if  [ ! -n "$(grep ' 7\.' /etc/redhat-release)" ] ;then
 echo "PHP7 Need CentOS_7"
@@ -51,53 +55,71 @@ if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
 
 yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 #Cancel installation libmcrypt
-#Source installation openssl和curl(含zlib)
+#Source installation openssl111和curl(含zlib)
 source ~/sh/function.sh
-install_phpopenssl
+install_phpopenssl111
 install_curl
 
 #Download PHP7
+php73_ver=7.3.13
 cd ~
-wget -4 -q http://hk2.php.net/distributions/php-${phpstable7}.tar.gz  #wget -4 http://www.php.net/distributions/php-${phpstable7}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable7}.tar.gz
-tar -zxf php-${phpstable7}.tar.gz && rm -rf php-${phpstable7}.tar.gz
+wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php73_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php73_ver}.tar.gz
+tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
 
-#PHP7.2 New features
+#PHP7.3 New features
 cd ~
+argon2_ver=argon2-20171227
 if [ ! -e "/usr/lib/libargon2.a" ]; then
-wget -4 -q http://file.asuhu.com/so/argon2-20171227.tar.gz
-tar -zxf argon2-20171227.tar.gz && rm -rf argon2-20171227.tar.gz
-cd ~/argon2-20171227
-make && make install
+wget -4 -q http://file.asuhu.com/so/${argon2_ver}.tar.gz
+tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
+cd ~/${argon2_ver}
+make -j ${THREAD} && make install
+
 fi
 
 cd ~
+libsodium_ver=libsodium-1.0.18
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-wget -4 -q http://file.asuhu.com/so/libsodium-1.0.16.tar.gz
-tar -zxf libsodium-1.0.16.tar.gz && rm -rf libsodium-1.0.16.tar.gz
-cd ~/libsodium-1.0.16
+wget -4 -q http://file.asuhu.com/so/${libsodium_ver}.tar.gz
+tar -zxf ${libsodium_ver}.tar.gz && rm -rf ${libsodium_ver}.tar.gz
+cd ~/${libsodium_ver}
 ./configure --disable-dependency-tracking --enable-minimal
-make && make install
+make -j ${THREAD} && make install
 fi
 
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
 echo "libsodium error"
 kill -9 $$
 else
-rm -rf  ~/libsodium-1.0.16
+rm -rf  ~/${libsodium_ver}
 fi
 
 if [ ! -e "/usr/lib/libargon2.a" ]; then
 echo "argon2 error"
 kill -9 $$
 else
-rm -rf  ~/argon2-20171227
+rm -rf  ~/${argon2_ver}
 fi
+
+
+#libzip https://blog.csdn.net/zhangatle/article/details/90169494
+yum -y remove libzip libzip-devel
+cd ~
+wget https://libzip.org/download/libzip-1.3.0.tar.gz
+tar -zxf libzip-1.3.0.tar.gz && rm -rf libzip-1.3.0.tar.gz
+cd libzip-1.3.0
+./configure
+make && make install
+cd ~
+rm -rf ~/libzip-1.3.0
+cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
+#libzip
 
 #ld.so.conf.d
 [ -z "`grep /usr/local/lib /etc/ld.so.conf.d/*.conf`" ] && echo '/usr/local/lib' > /etc/ld.so.conf.d/local.conf
 ldconfig
 
-cd ~/php-${phpstable7}
+cd ~/php-${php73_ver}
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/usr/local/php/etc \
 --with-config-file-scan-dir=/usr/local/php/etc/php.d \
 --enable-fpm --with-fpm-user=www --with-fpm-group=www \
@@ -106,12 +128,14 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/u
 --with-libxml-dir=/usr --enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-exif \
 --enable-sysvsem --enable-inline-optimization --enable-mbregex \
 --enable-mbstring --with-password-argon2 --with-sodium=/usr/local --with-gd  \
---with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-ftp  --enable-intl --without-pear --with-gettext --enable-soap \
+--with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-ftp  --enable-intl --without-pear \
+--with-gettext --enable-zip --enable-soap \
 --with-openssl=/usr/local/openssl --with-curl=/usr/local/curl --with-zlib=/usr/local/zlib \
 --enable-calendar --enable-wddx \
 --with-snmp=shared --with-gmp \
 --disable-debug --disable-fileinfo
 
+#--without-libzip
 #--enable-gd-native-ttf configure: #WARNING: unrecognized options: --enable-gd-native-ttf
 #--with-libdir=lib64               #安装的系统是64位的，而64位的用户库文件默认是在/usr/lib64，指定--with-libdir=lib64，而编译脚本默认是lib
 #--with-mcrypt                     #The Mcrypt library has been declared DEPRECATED since PHP 7.1, to use in its OpenSSL
@@ -121,7 +145,7 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/u
 #--enable-maintainer-zts Enable thread safety - for code maintainers only!!
 #--disable-json          Disable JavaScript Object Serialization support
 
-make -j ${a} && make install
+make -j ${THREAD} && make install
 
 mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
 #添加用户和权限www.www
@@ -130,13 +154,13 @@ mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
 chown www.www -R /usr/local/php;
 
 if [ ! -e '/usr/local/php/bin/php' ]; then
-echo -e "\033[31m Install PHP${phpstable7} Error ... \033[0m \n"
+echo -e "\033[31m Install PHP${php73_ver} Error ... \033[0m \n"
 kill -9 $$
 fi
 
 cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf         #修改fpm配置php-fpm.conf.default文件名称
-cp /root/php-${phpstable7}/php.ini-production /usr/local/php/etc/php.ini           #复制php.ini配置文件
-cp /root/php-${phpstable7}/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm             #复制php-fpm启动脚本到init.d
+cp /root/php-${php73_ver}/php.ini-production /usr/local/php/etc/php.ini           #复制php.ini配置文件
+cp /root/php-${php73_ver}/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm             #复制php-fpm启动脚本到init.d
 chmod +x /etc/init.d/php-fpm                                                       #赋予执行权限
 chkconfig --add php-fpm;chkconfig php-fpm on
 
@@ -200,6 +224,7 @@ env[TEMP] = /tmp
 EOF
 
 #listen = /dev/shm/php-cgi.sock
+#memory_limit顾名思义，这个值是用来限制PHP所占用的内存的，具体一点说就是一个PHP工作进程即php-fpm所能够使用的最大内存，默认是128MB，
 #php.ini优化
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
 sed -i "s@^memory_limit.*@memory_limit = 64M@" /usr/local/php/etc/php.ini
@@ -258,16 +283,16 @@ EOF
 cd ~
 #ioncube_loader安装
 #http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20170718
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20180731
 
-wget -t 3 -O ${php_extensions_path}/ioncube_loader_lin_7.2.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_7.2.so
-    if [ ! -e "${php_extensions_path}/ioncube_loader_lin_7.2.so" ];then
-wget -O "${php_extensions_path}/ioncube_loader_lin_7.2.so" http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_7.2.so
+wget -t 3 -O ${php_extensions_path}/ioncube_loader_lin_7.3.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_7.3.so
+    if [ ! -e "${php_extensions_path}/ioncube_loader_lin_7.3.so" ];then
+wget -O "${php_extensions_path}/ioncube_loader_lin_7.3.so" http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_7.3.so
     fi
-chmod +x ${php_extensions_path}/ioncube_loader_lin_7.2.so
+chmod +x ${php_extensions_path}/ioncube_loader_lin_7.3.so
 cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
-zend_extension=ioncube_loader_lin_7.2.so
+zend_extension=ioncube_loader_lin_7.3.so
 EOF
 #######################################
 
@@ -286,15 +311,16 @@ EOF
 #source ~/sh/function.sh
 #install_phpredis
 
+#CentOS7
 #libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
-#/usr/bin/libtool --version    ltmain.sh (GNU libtool) 2.2.6b
-#/root/php/libtool --version   ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
+#/usr/bin/libtool --version   libtool (GNU libtool) 2.4.2 Copyright (C) 2011 Free Software Foundation, Inc.
+#/root/php-7.3.13/libtool --version ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
 
 cd ~
 if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib
 /etc/rc.d/init.d/php-fpm restart
 echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile;
-source /etc/profile;
+source /etc/profile
 /usr/local/php/bin/php --version
-rm -rf php-${phpstable7}
+rm -rf php-${php73_ver}
