@@ -237,6 +237,6 @@ ${mysql_install_dir}/bin/mysql --version
 cd ~
 rm -rf mysql-${sqlstable57}
 #添加环境变量
-echo "export PATH=${mysql_install_dir}/bin/:$PATH">>/etc/profile && source /etc/profile
+echo export PATH=${mysql_install_dir}/bin/:\$PATH >>/etc/profile && source /etc/profile
 source /etc/profile
 service mysqld stop    #不然会卡在./mysql.sh 2>&1 | tee mysql.log

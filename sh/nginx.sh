@@ -374,8 +374,7 @@ rm -rf nginx-${ngstable}.tar.gz;rm -rf nginx-${ngstable};
 rm -rf  openssl-1.1.1-latest.tar.gz;rm -rf openssl-1.1.1-latest;
 rm -rf pcre-${pcrestable}.tar.gz;rm -rf pcre-${pcrestable};
 rm -rf zlib-${zlibstable}.tar.gz;rm -rf zlib-${zlibstable}
-#设置系统环境变量设置
-echo 'export PATH=/usr/local/nginx/sbin:$PATH'>>/etc/profile;
-source /etc/profile;#重启生效
+#path
+echo 'export PATH=/usr/local/nginx/sbin:$PATH'>>/etc/profile && source /etc/profile
 #ldd $(which nginx)
 /usr/local/nginx/sbin/nginx -V

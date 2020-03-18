@@ -22,7 +22,7 @@ mysql_data_dir=/usr/local/mysql/data
 sqlstable=$(curl -s https://dev.mysql.com/downloads/mysql/5.6.html#downloads | grep "<h1>MySQL Community Server" | awk '{print $4}')
 if [ -z ${sqlstable} ] ;then
 sqlstable=5.6.47
-echo "Install MySQL Community Server 5.6.46"
+echo "Install MySQL Community Server 5.6.47"
 else
 echo "Install MySQL Community Server ${sqlstable}"
 fi
@@ -246,6 +246,6 @@ ${mysql_install_dir}/bin/mysql --version
 cd ~
 rm -rf mysql-${sqlstable}
 #添加环境变量
-echo "export PATH=${mysql_install_dir}/bin/:$PATH">>/etc/profile && source /etc/profile
+echo export PATH=${mysql_install_dir}/bin/:\$PATH >>/etc/profile && source /etc/profile
 source /etc/profile
 service mysqld stop    #不然会卡在./mysql.sh 2>&1 | tee mysql.log

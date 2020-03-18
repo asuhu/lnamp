@@ -61,7 +61,7 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php73_ver=7.3.13
+php73_ver=7.3.15
 cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php73_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php73_ver}.tar.gz
 tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
@@ -120,18 +120,20 @@ cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
 ldconfig
 
 cd ~/php-${php73_ver}
-CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php --with-config-file-path=/usr/local/php/etc \
+CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
+--with-config-file-path=/usr/local/php/etc \
 --with-config-file-scan-dir=/usr/local/php/etc/php.d \
 --enable-fpm --with-fpm-user=www --with-fpm-group=www \
+--enable-opcache \
 --enable-mysqlnd --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd \
 --with-iconv-dir=/usr/local  --with-freetype-dir --with-jpeg-dir --with-png-dir \
 --with-libxml-dir=/usr --enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-exif \
 --enable-sysvsem --enable-inline-optimization --enable-mbregex \
 --enable-mbstring --with-password-argon2 --with-sodium=/usr/local --with-gd  \
---with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-ftp  --enable-intl --without-pear \
+--with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-ftp  --enable-intl --with-xsl \
 --with-gettext --enable-zip --enable-soap \
 --with-openssl=/usr/local/openssl --with-curl=/usr/local/curl --with-zlib=/usr/local/zlib \
---enable-calendar --enable-wddx \
+--enable-wddx \
 --with-snmp=shared --with-gmp \
 --disable-debug --disable-fileinfo
 
@@ -224,8 +226,9 @@ env[TEMP] = /tmp
 EOF
 
 #listen = /dev/shm/php-cgi.sock
-#memory_limit顾名思义，这个值是用来限制PHP所占用的内存的，具体一点说就是一个PHP工作进程即php-fpm所能够使用的最大内存，默认是128MB，
+################
 #php.ini优化
+#memory_limit用来限制PHP所占用的内存的
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
 sed -i "s@^memory_limit.*@memory_limit = 64M@" /usr/local/php/etc/php.ini
 elif [ $Mem -gt 2500 -a $Mem -le 3500 ];then
@@ -245,7 +248,11 @@ sed -i 's@^max_execution_time.*@max_execution_time = 60@' /usr/local/php/etc/php
 sed -i 's@^disable_functions.*@disable_functions = passthru,exec,system,chroot,chgrp,chown,shell_exec,proc_open,proc_get_status,ini_alter,ini_restore,dl,openlog,syslog,readlink,symlink,popepassthru,stream_socket_server,fsocket,popen,eval,parse_ini_file,show_source,pclose,multi_exec,chmod,set_time_limit@' /usr/local/php/etc/php.ini
 sed -i "s@^;curl.cainfo.*@curl.cainfo = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
-
+sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
+  [ -e /usr/sbin/sendmail ] && sed -i 's@^;sendmail_path.*@sendmail_path = /usr/sbin/sendmail -t -i@' /usr/local/php/etc/php.ini
+sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
+sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
+################
 
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
@@ -259,7 +266,7 @@ wget -t 3 -O /home/wwwroot/web/proble.tar.gz  http://file.asuhu.com/so/proble.ta
 cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
 
 ################
-#PHPopcache扩展，线程安全不适合这个模块/usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so: undefined symbol: executor_globals
+#PHP_opcache
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
 [opcache]
 zend_extension=opcache.so
@@ -278,28 +285,42 @@ opcache.consistency_checks=0
 ;opcache.optimization_level=0
 EOF
 ################
-
 #######################################
 cd ~
 #ioncube_loader安装
+if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20180731 ];then
 #http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20180731
-
-wget -t 3 -O ${php_extensions_path}/ioncube_loader_lin_7.3.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_7.3.so
-    if [ ! -e "${php_extensions_path}/ioncube_loader_lin_7.3.so" ];then
-wget -O "${php_extensions_path}/ioncube_loader_lin_7.3.so" http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_7.3.so
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20180731
+ioncube_loader_path=ioncube_loader_lin_7.3_ts.so
+#
+wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+    if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
+wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
-chmod +x ${php_extensions_path}/ioncube_loader_lin_7.3.so
+chmod +x ${php_extensions_path}/${ioncube_loader_path}
 cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
-zend_extension=ioncube_loader_lin_7.3.so
+zend_extension=${ioncube_loader_path}
 EOF
+	elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20180731 ]; then
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20180731
+ioncube_loader_path=ioncube_loader_lin_7.3.so
+#
+wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+    if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
+wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
+    fi
+chmod +x ${php_extensions_path}/${ioncube_loader_path}
+cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
+[ioncube]
+zend_extension=${ioncube_loader_path}
+EOF
+fi
 #######################################
-
 #Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  并未支持PHP7
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。仅支持NTS版本的PHP
-
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
+#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  未支持PHP7
+#ZendGuardLoader 仅支持NTS版本的PHP 
 
 #为了避免冲突，snmp使用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
@@ -309,7 +330,7 @@ EOF
 
 #安装phpredis
 #source ~/sh/function.sh
-#install_phpredis
+#install_phpredis7
 
 #CentOS7
 #libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
@@ -320,7 +341,6 @@ cd ~
 if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib
 /etc/rc.d/init.d/php-fpm restart
-echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile;
-source /etc/profile
+echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
 rm -rf php-${php73_ver}

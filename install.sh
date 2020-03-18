@@ -57,12 +57,13 @@ next() {
 #Display Version
 nginx_openssl=Nginx1.16
 apache=Apache2.2.34_prefork_No_Support_HTTP2
-apache_openssl='Apache2.4_latest_version_event_HTTP2'
+apache_openssl='Apache2.4_latest_event_HTTP2'
 php5apache=PHP5.6_Apache
+php7apache=PHP7.3_Apache
 php5=PHP5.6.40_Nginx
-php7=PHP7.3_Nginx_CentOS7
-mysql6='Mysql5.6_latest_version'
-mysql7='Mysql5.7_latest_version'
+php7=PHP7.3_Nginx
+mysql6='Mysql5.6_latest'
+mysql7='Mysql5.7_latest(Memory greater than 2000M)'
 
 
 #SSHÓÅ»¯
@@ -191,12 +192,13 @@ exit 1
     if [ "$PHP_yn" == 'y' ]; then 
         echo 'Please select php:'
         echo -e "\033[33m 1 $php5apache \033[0m"
-        echo -e "\033[31m 2 $php5 \033[0m"
-        echo -e "\033[31m 3 $php7 \033[0m"
-        read -p "Please input a number:(Default 2 press Enter) " PHP_version
-        [ -z "$PHP_version" ] && PHP_version=2
-        if [[ ! $PHP_version =~ ^[1-3]$ ]]; then
-          echo "input error! Please only input number 1,2,3"
+        echo -e "\033[33m 2 $php7apache \033[0m"
+        echo -e "\033[31m 3 $php5 \033[0m"
+        echo -e "\033[31m 4 $php7 \033[0m"
+        read -p "Please input a number:(Default 3 press Enter) " PHP_version
+        [ -z "$PHP_version" ] && PHP_version=3
+        if [[ ! $PHP_version =~ ^[1-4]$ ]]; then
+          echo "input error! Please only input number 1,2,3,4"
         fi
     fi
   fi
@@ -244,8 +246,10 @@ fi
   if [ "$PHP_version" == '1' ]; then
 ./sh/php5apache.sh 2>&1 | tee php5apache.log;
   elif [ "$PHP_version" == '2' ]; then
-./sh/php5.sh 2>&1 | tee php5.log;
+./sh/php7apache.sh 2>&1 | tee php7apache.log;
   elif [ "$PHP_version" == '3' ]; then
+./sh/php5.sh 2>&1 | tee php5.log;
+  elif [ "$PHP_version" == '4' ]; then
 ./sh/php7.sh 2>&1 | tee php7.log;
 fi
  

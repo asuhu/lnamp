@@ -175,6 +175,10 @@ sed -i 's@^max_execution_time.*@max_execution_time = 60@' /usr/local/php/etc/php
 sed -i 's@^disable_functions.*@disable_functions = passthru,exec,system,chroot,chgrp,chown,shell_exec,proc_open,proc_get_status,ini_alter,ini_restore,dl,openlog,syslog,readlink,symlink,popepassthru,stream_socket_server,fsocket,popen,eval,parse_ini_file,show_source,pclose,multi_exec,chmod,set_time_limit@' /usr/local/php/etc/php.ini
 sed -i "s@^;curl.cainfo.*@curl.cainfo = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
+sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
+  [ -e /usr/sbin/sendmail ] && sed -i 's@^;sendmail_path.*@sendmail_path = /usr/sbin/sendmail -t -i@' /usr/local/php/etc/php.ini
+sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
+sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
 
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
@@ -204,41 +208,63 @@ EOF
 
 #############################
 cd ~
-#ioncube_loader安装 http://www.ioncube.com/loaders.php #https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226
-
-wget -t 3 -O ${php_extensions_path}/ioncube_loader_lin_5.6.so http://file.asuhu.com/so/ioncube/ioncube_loader_lin_5.6.so
-    if [ ! -e "${php_extensions_path}/ioncube_loader_lin_5.6.so" ];then
-wget -O ${php_extensions_path}/ioncube_loader_lin_5.6.so http://arv.asuhu.com/ftp/so/ioncube/ioncube_loader_lin_5.6.so
+#ioncube_loader安装
+if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20131226 ];then
+#http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20131226
+ioncube_loader_path=ioncube_loader_lin_5.6_ts.so
+#
+wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+    if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
+wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
-chmod +x ${php_extensions_path}/ioncube_loader_lin_5.6.so
+chmod +x ${php_extensions_path}/${ioncube_loader_path}
 cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
-zend_extension=ioncube_loader_lin_5.6.so
+zend_extension=${ioncube_loader_path}
 EOF
-#############################
-
-###########################################################
-cd ~
-#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  并未支持PHP7 http://www.zend.com/en/products/loader/downloads#Linux
-#ZendGuardLoader安装  wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz
-#Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。仅支持NTS版本的PHP
-wget -t 3 -O ${php_extensions_path}/ZendGuardLoader.so  http://file.asuhu.com/so/zend/ZendGuardLoader.so
-    if [ ! -e "${php_extensions_path}/ZendGuardLoader.so" ];then
-wget -O "${php_extensions_path}/ZendGuardLoader.so"  http://arv.asuhu.com/ftp/so/zend/ZendGuardLoader.so
+	elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226 ]; then
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226
+ioncube_loader_path=ioncube_loader_lin_5.6.so
+#
+wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+    if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
+wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
-chmod +x ${php_extensions_path}/ZendGuardLoader.so
+chmod +x ${php_extensions_path}/${ioncube_loader_path}
+cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
+[ioncube]
+zend_extension=${ioncube_loader_path}
+EOF
+fi
+#############################
+###########################################################
+#ZendGuardLoader安装  wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz  http://www.zend.com/en/products/loader/downloads#Linux
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
+#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  未支持PHP7
+#ZendGuardLoader 仅支持NTS版本的PHP
+cd ~
+if [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20131226 ];then
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20131226
+ZendGuardLoader_path=ZendGuardLoader.so
+wget -t 3 -O ${php_extensions_path}/${ZendGuardLoader_path}  http://file.asuhu.com/so/zend/${ZendGuardLoader_path}
+    if [ ! -e "${php_extensions_path}/${ZendGuardLoader_path}" ];then
+wget -O "${php_extensions_path}/${ZendGuardLoader_path}"  http://arv.asuhu.com/ftp/so/zend/${ZendGuardLoader_path}
+    fi
+chmod +x ${php_extensions_path}/${ZendGuardLoader_path}
 cat > /usr/local/php/etc/php.d/zend.ini << EOF
 [Zend Guard]
-zend_extension = ZendGuardLoader.so
+zend_extension = ${ZendGuardLoader_path}
 zend_loader.enable = 1
 zend_loader.disable_licensing = 0
 zend_loader.obfuscation_level_support = 3
 zend_loader.license_path =
 EOF
+elif [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20131226 ]; then
+echo "Will not install ZendGuardLoader.so"
+#/usr/local/php/lib/php/extensions/no-debug-zts-20131226/ZendGuardLoader.so: undefined symbol: executor_globals
+fi
 ###########################################################
-
 #为了避免冲突，snmp用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
 [snmp]
@@ -247,7 +273,7 @@ EOF
 
 #安装phpredis
 #source ~/sh/function.sh
-#install_phpredis
+#install_phpredis5
 
 #disable-maintainer-zts
 #libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
@@ -259,7 +285,6 @@ if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib
 /etc/init.d/php-fpm restart
 #path
-echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile
-source /etc/profile
+echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
 rm -rf php-${phpstable56}

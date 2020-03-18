@@ -5,21 +5,18 @@ THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 ###############################################################################
 install_56_bison() {
 yum -y install bison bison-devel
-bisonversion=`bison --version | head -n 1|awk '{print $NF}'|awk -F "." '{print $1}'`
-#CentOS6 needs to be installed after the system is not needed bison . CentOS6 bison --version bison (GNU Bison) 2.4.1
-if [ ${bisonversion} -eq 2 ];then
+if ! which gcc;then yum -y install gcc;fi
+#PHP5.6.40 (need) . WARNING: This bison version is not supported for regeneration of the Zend/PHP parsers (found: 3.0, min: 204, excluded: 3.0).
+#bisonversion=`bison --version | head -n 1|awk '{print $NF}'|awk -F "." '{print $1}'`
+#if [ ${bisonversion} -eq 2 ];then
 cd ~
-#wget http://ftp.gnu.org/gnu/bison/bison-3.0.4.tar.gz configure: WARNING: This bison version is not supported for regeneration of the Zend/PHP parsers (found: 3.0, min: 204, excluded: 3.0).
-wget http://ftp.gnu.org/gnu/bison/bison-2.7.1.tar.gz
-tar -zxf bison-2.7.1.tar.gz && rm -rf bison-2.7.1.tar.gz
-cd bison-2.7.1
+wget http://ftp.gnu.org/gnu/bison/bison-3.5.2.tar.gz
+tar -zxf bison-3.5.2.tar.gz && rm -rf bison-3.5.2.tar.gz
+cd bison-3.5.2
  ./configure
 make -j ${THREAD} && make install
 cd ~
-rm -rf bison-2.7.1
-else
-echo "bison does not need to be updated"
-fi
+rm -rf bison-3.5.2
 }
 ###############################################################################
 
@@ -118,6 +115,7 @@ cd zlib-1.2.11
 make -j ${THREAD} && make install
 echo "/usr/local/zlib/lib" > /etc/ld.so.conf.d/zlib.conf
 ldconfig -v
+rm -rf ~/zlib-1.2.11
 else
 echo "Already installed zlib"
 fi
@@ -274,6 +272,7 @@ rm -rf ${phpredisvs}
 }
 #
 install_phpredis7() {
+#http://pecl.php.net/package/redis
 phpredisvs=phpredis-5.1.1
 cd ~
 if wget -4 http://file.asuhu.com/so/${phpredisvs}.tar.gz

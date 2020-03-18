@@ -7,7 +7,7 @@
 <li>Apache2.2.34工作模式为PreforkMPM(The final release 2.2.34 was published in July 2017)</li>
 <li>Apache2.4工作模式为Event MPM(编译全部Prefork、Worker和Event三种MPM可以自行切换)</li>
 <li>PHP5.6.40(PHP 5.6.40 is the last scheduled release of PHP 5.6 branch)</li>
-<li>PHP7.3.13</li>
+<li>PHP7.3.15</li>
 <li>PHP扩展模块 Zend OPcache、Zend Guard Loader、ionCube Loader、 phpredis、swoole、xdebug、fileinfo、snmp(支持zabbix、cacti、Nagios)</li>
 <li>MySQL-5.6</li>
 <li>MySQL-5.7</li>

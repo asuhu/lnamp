@@ -21,7 +21,7 @@ if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
 
 #安装openssl
 source ~/sh/function.sh
-install_phpopenssl
+install_phpopenssl111
 install_nghttp2
 
 cd ~
@@ -43,7 +43,7 @@ rm -rf ${aprversion}.tar.gz && rm -rf ${aprutilversion}.tar.gz
 sed -i 's/^#define AP_SERVER_BASEVENDOR.*/#define AP_SERVER_BASEVENDOR "Microsoft-IIS Software Foundation" /g'  ~/httpd-${apstable}/include/ap_release.h
 sed -i 's/^#define AP_SERVER_BASEPROJECT.*/#define AP_SERVER_BASEPROJECT "Microsoft-IIS HTTP Server" /g' ~/httpd-${apstable}/include/ap_release.h
 sed -i 's/^#define AP_SERVER_BASEPRODUCT.*/#define AP_SERVER_BASEPRODUCT "Microsoft-IIS\/10.0"   /g'  ~/httpd-${apstable}/include/ap_release.h
-#sed -i 's@^#define AP_SERVER_BASEPRODUCT.*@#define AP_SERVER_BASEPRODUCT "Microsoft-IIS/10.0"   @g'  ~/httpd-${apstable}/include/ap_release.h
+#sed -i 's@^#define AP_SERVER_BASEPRODUCT.*@#define AP_SERVER_BASEPRODUCT "Microsoft-IIS\/10.0"   @g'  ~/httpd-${apstable}/include/ap_release.h
 
 cd ~
 cd httpd-$apstable;
@@ -61,9 +61,10 @@ cd httpd-$apstable;
 --enable-so \
 --enable-dav \
 --enable-rewrite \
---enable-ssl
+--enable-ssl \
 --enable-mime-magic \
 --enable-proxy \
+--enable-proxy-balancer \
 --enable-http2 \
 --enable-expires --enable-static-support --enable-suexec \
 --enable-modules=all --enable-mods-shared=all
@@ -95,17 +96,21 @@ chmod +x /etc/init.d/httpd;
 if service iptables status ;then
 iptables -I INPUT -p tcp -m multiport --dport 80,443,8080,3306 -j ACCEPT
 service iptables save;service iptables restart
+elif systemctl status firewalld.service;then
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+firewall-cmd --zone=public --add-port=443/tcp --permanent
+firewall-cmd --zone=public --add-port=8080/tcp --permanent
+firewall-cmd --zone=public --add-port=3306/tcp --permanent
+firewall-cmd --reload
 fi
 ###
-echo 'export PATH=/usr/local/apache/bin:$PATH'>>/etc/profile;
-source /etc/profile;
 
 #日志轮训
 #ErrorLog "|/usr/local/apache/bin/rotatelogs /backup/log/httpd/error_log_%Y%m%d 86400 480"
 #CustomLog "|/usr/local/apache/bin/rotatelogs /backup/log/httpd/access_log_%Y%m%d 86400 480" combined
 
 
-#修改apache的用户和组，监听端口，管理员邮箱，对php文件的支持，MPM
+#修改apache的用户和组，监听端口，管理员邮箱，MPM
     sed -i 's/^User.*/User apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^Group.*/Group apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^#ServerName www.example.com:80/ServerName 0.0.0.0:80/' /usr/local/apache/conf/httpd.conf
@@ -114,40 +119,24 @@ source /etc/profile;
     sed -i 's@DirectoryIndex index.html@DirectoryIndex index.html index.htm index.php index.shtml@' /usr/local/apache/conf/httpd.conf
     sed -i "s@^#Include conf/extra/httpd-mpm.conf@Include conf/extra/httpd-mpm.conf@" /usr/local/apache/conf/httpd.conf
     sed -i 's@^#Include conf/extra/httpd-autoindex.conf@Include conf/extra/httpd-autoindex.conf@' /usr/local/apache/conf/httpd.conf
-    sed -i 's@^#Include conf/extra/httpd-languages.conf@Include conf/extra/httpd-languages.conf@' /usr/local/apache/conf/httpd.conf
 #启用模块
-    sed -i -r 's/^#(.*mod_cache.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_cache_socache.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_socache_shmcb.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_socache_dbm.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_socache_memcache.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_proxy.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_proxy_connect.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_proxy_ftp.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_proxy_http.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_suexec.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_vhost_alias.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_rewrite.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_deflate.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_expires.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_ssl.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_dav.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_dav_fs.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_dav_lock.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_proxy_fcgi.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_remoteip.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_watchdog.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_buffer.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_info.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_cgid.so)/\1/' /usr/local/apache/conf/httpd.conf
-
-    sed -i -r 's/^#(.*mod_http2.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_proxy_http2.so)/\1/' /usr/local/apache/conf/httpd.conf
-    sed -i -r 's/^#(.*mod_negotiation.so)/\1/' /usr/local/apache/conf/httpd.conf
 #启用常见的模块sed -i -r 's/^#(.*.so)/\1/' /usr/local/apache/conf/httpd.conf  不能使用这个，范围太大
+#https://httpd.apache.org/docs/2.4/mod/
+    sed -i -r 's/^#(.*mod_buffer.so)/\1/' /usr/local/apache/conf/httpd.conf
+    sed -i -r 's/^#(.*mod_remoteip.so)/\1/' /usr/local/apache/conf/httpd.conf
+    sed -i -r 's/^#(.*mod_info.so)/\1/' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_proxy.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_proxy_balancer.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_suexec.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_vhost_alias.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_rewrite.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_deflate.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_expires.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_ssl.so)@\1@' /usr/local/apache/conf/httpd.conf
+    sed -ri 's@^#(LoadModule.*mod_http2.so)@\1@' /usr/local/apache/conf/httpd.conf
 
 #设置server-status的允许范围
-#    sed -i 's/Allow from All/Require all granted/' /usr/local/apache/conf/extra/httpd-vhosts.conf
+#sed -i 's/Allow from All/Require all granted/' /usr/local/apache/conf/extra/httpd-vhosts.conf
 sed -i 's/ Require host .example.com/ Require host localhost/g' /usr/local/apache/conf/extra/httpd-info.conf
 sed -i 's/Require ip 127/ Require ip 127.0.0.1 ::1/g' /usr/local/apache/conf/extra/httpd-info.conf
 
@@ -178,7 +167,10 @@ Include conf/vhost/*.conf
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 EOF
-
+#######################################
+#设置Apache 支持 PHP
+sed -i "s@AddType\(.*\)Z@AddType\1Z\n    AddType application/x-httpd-php .php .phtml\n    AddType appication/x-httpd-php-source .phps@"  /usr/local/apache/conf/httpd.conf;
+#sed -i "s@#AddHandler cgi-script .cgi@AddHandler cgi-script .cgi .pl@" /usr/local/apache/conf/httpd.conf;
 #######################################
 mkdir -p /home/{wwwroot,wwwlogs}
 mkdir -p /home/wwwroot/default
@@ -196,7 +188,7 @@ cat > /usr/local/apache/conf/vhost/default.conf << EOF
   CustomLog "|/usr/local/apache/bin/rotatelogs ${wwwlogs_dir}/access_log_%Y%m%d 86400 480" combined
 <Directory "${wwwroot_dir}/default">
   SetOutputFilter DEFLATE
-  Options FollowSymLinks ExecCGI IncludesNoExec
+  Options FollowSymLinks IncludesNoExec
   AllowOverride All
   Require all granted
   DirectoryIndex index.html index.php
@@ -211,7 +203,9 @@ EOF
 chown apache.apache -R /usr/local/apache
 chown apache.apache -R /home/{wwwroot,wwwlogs}
 /usr/local/apache/bin/httpd -V
-
+#path
+echo 'export PATH=/usr/local/apache/bin:$PATH'>>/etc/profile && source /etc/profile
+#
 cd ~
 rm -rf httpd-${apstable}
 rm -rf ${aprversion}
