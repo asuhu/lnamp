@@ -1,11 +1,11 @@
 #!/bin/bash
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Bit=$(getconf LONG_BIT)
-ngstable=1.16.1
+ngstable=1.18.0
 zlibstable=1.2.11
-pcrestable=8.43
+pcrestable=8.44
 Google_ip=216.58.200.4
-Within_China=http://122.114.113.192:8080/ftp/
+Within_China=http://qnvideo.henan100.net/
 
 if ping -c 10 file.asuhu.com >/dev/null;then
 echo "website configuration files check ok"
@@ -32,7 +32,7 @@ yum -y install zlib-devel
 if ping -c 2 ${Google_ip} >/dev/null;then
 wget -4 -q http://zlib.net/zlib-${zlibstable}.tar.gz
 wget -4 -q --no-check-certificate https://ftp.pcre.org/pub/pcre/pcre-${pcrestable}.tar.gz
-wget -4 -q --no-check-certificate https://www.openssl.org/source/openssl-1.1.1-latest.tar.gz   #wget -4 --no-check-certificate https://www.openssl.org/source/openssl-1.1.0-latest.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1g.tar.gz
 wget -4 -q http://nginx.org/download/nginx-${ngstable}.tar.gz
 else
 wget -4 -q ${Within_China}/zlib-${zlibstable}.tar.gz
@@ -69,9 +69,19 @@ ldconfig
 #Install Nginx
 cd ~
 yum -y install gzip man
-tar -zxf nginx-${ngstable}.tar.gz                             #Copy NGINX manual page to /usr/share/man/man8:
-#sed -i 's@^#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "Microsoft-IIS/10.0/" NGINX_VERSION @g'  ~/nginx-${ngstable}/src/core/nginx.h
-
+tar -zxf nginx-${ngstable}.tar.gz
+#
+#Custom nginx name
+sed -i 's@^#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "Microsoft-IIS/10.0/" NGINX_VERSION@g'  ~/nginx-${ngstable}/src/core/nginx.h
+sed -i 's@^#define NGINX_VAR          "NGINX"@#define NGINX_VAR          "Microsoft-IIS"@g'  ~/nginx-${ngstable}/src/core/nginx.h
+sed -i '30,40s@nginx@Microsoft-IIS@g'  ~/nginx-${ngstable}/src/http/ngx_http_special_response.c
+sed -i '45,50s@nginx@Microsoft-IIS@g' ~/nginx-${ngstable}/src/http/ngx_http_header_filter_module.c
+#
+#Nginx shows the file name length of a static directory file
+sed -i 's/^#define NGX_HTTP_AUTOINDEX_PREALLOCATE  50/#define NGX_HTTP_AUTOINDEX_PREALLOCATE  150/'  ~/nginx-${ngstable}/src/http/modules/ngx_http_autoindex_module.c
+sed -i 's/^#define NGX_HTTP_AUTOINDEX_NAME_LEN     50/#define NGX_HTTP_AUTOINDEX_NAME_LEN     150/'  ~/nginx-${ngstable}/src/http/modules/ngx_http_autoindex_module.c
+#
+#Copy NGINX manual page to /usr/share/man/man8:
 cp -f ~/nginx-${ngstable}/man/nginx.8 /usr/share/man/man8
 gzip /usr/share/man/man8/nginx.8
 

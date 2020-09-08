@@ -19,8 +19,7 @@ tar -zxf httpd-$apstable.tar.gz && rm -rf httpd-$apstable.tar.gz
 
 cd ~
 yum -y install expat-devel
-#http://archive.apache.org/dist/apr/apr-1.6.5.tar.gz
-#http://archive.apache.org/dist/apr/apr-util-1.6.1.tar.gz
+#http://archive.apache.org/dist/apr/apr-1.6.5.tar.gz http://archive.apache.org/dist/apr/apr-util-1.6.1.tar.gz
 aprversion=apr-1.6.5
 aprutilversion=apr-util-1.6.1
 wget http://archive.apache.org/dist/apr/${aprversion}.tar.gz
@@ -29,32 +28,33 @@ tar zxf ${aprversion}.tar.gz && cp -fr ./${aprversion} ./httpd-$apstable/srclib/
 tar zxf ${aprutilversion}.tar.gz && cp -fr ./${aprutilversion} ./httpd-$apstable/srclib/apr-util
 rm -rf ${aprversion}.tar.gz && rm -rf ${aprutilversion}.tar.gz
 
+#Diy Apache version
 sed -i 's/^#define AP_SERVER_BASEVENDOR.*/#define AP_SERVER_BASEVENDOR "Microsoft-IIS Software Foundation" /g'  ~/httpd-${apstable}/include/ap_release.h
 sed -i 's/^#define AP_SERVER_BASEPROJECT.*/#define AP_SERVER_BASEPROJECT "Microsoft-IIS HTTP Server" /g' ~/httpd-${apstable}/include/ap_release.h
 sed -i 's@^#define AP_SERVER_BASEPRODUCT.*@#define AP_SERVER_BASEPRODUCT "Microsoft-IIS/10.0" @g'  ~/httpd-${apstable}/include/ap_release.h
 
-
+#configuration
 cd ~
 cd httpd-$apstable;
-./configure \
---prefix=/usr/local/apache \
+	./configure \
+	--prefix=/usr/local/apache \
 	--with-mpm=prefork \
 	--with-included-apr \
 	--with-ssl \
 	--with-pcre \
 	--enable-dav \
-        --enable-so \
-        --enable-suexec \
+	--enable-so \
+	--enable-suexec \
 	--enable-proxy \
 	--enable-proxy-balancer \
-        --enable-deflate=shared \
-        --enable-expires=shared \
-        --enable-ssl=shared \
-        --enable-headers=shared \
-        --enable-rewrite=shared \
-        --enable-static-support \
-        --enable-modules=all \
-        --enable-mods-shared=all
+	--enable-deflate=shared \
+	--enable-expires=shared \
+	--enable-ssl=shared \
+	--enable-headers=shared \
+	--enable-rewrite=shared \
+	--enable-static-support \
+	--enable-modules=all \
+	--enable-mods-shared=all
 make -j ${THREAD} && make install
 cd ~
 
@@ -66,6 +66,7 @@ fi
     id -u apache >/dev/null 2>&1
     [ $? -ne 0 ] && useradd -M -s /sbin/nologin apache
 chown apache.apache -R /usr/local/apache  #创建用户和文件夹并赋予文件夹用户权限
+###
 cp -f /usr/local/apache/bin/apachectl /etc/init.d/httpd;
 sed -i '2a # chkconfig: - 85 15' /etc/init.d/httpd;
 sed -i '3a # description: Apache is a World Wide Web server. It is used to server' /etc/init.d/httpd;
@@ -83,13 +84,7 @@ firewall-cmd --zone=public --add-port=3306/tcp --permanent
 firewall-cmd --reload
 fi
 ###
-
-#日志轮训
-#ErrorLog "|/usr/local/apache/bin/rotatelogs /backup/log/httpd/error_log_%Y%m%d 86400 480"
-#CustomLog "|/usr/local/apache/bin/rotatelogs /backup/log/httpd/access_log_%Y%m%d 86400 480" combined
-
-
-#修改apache的用户和组，监听端口，管理员邮箱
+#修改apache的用户和组，监听端口，管理员邮箱，DirectoryIndex，MPM，支持目录索引autoindex
     sed -i 's/^User.*/User apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^Group.*/Group apache/i' /usr/local/apache/conf/httpd.conf
     sed -i 's/^#ServerName www.example.com:80/ServerName 0.0.0.0:80/' /usr/local/apache/conf/httpd.conf
@@ -130,7 +125,7 @@ fi
 
 #server-status server-info
 sed -i 's@Allow from .example.com@Allow from 127.0.0.1 ::1@g' /usr/local/apache/conf/extra/httpd-info.conf
-
+#httpd.conf
   cat >> /usr/local/apache/conf/httpd.conf << "EOF"
 <IfModule mod_headers.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml text/javascript
@@ -152,11 +147,10 @@ Include conf/vhost/*.conf
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 EOF
-#######################################
+##########
 #设置Apache 支持 PHP
 sed -i "s@AddType\(.*\)Z@AddType\1Z\n    AddType application/x-httpd-php .php .phtml\n    AddType appication/x-httpd-php-source .phps@"  /usr/local/apache/conf/httpd.conf;
-#sed -i "s@#AddHandler cgi-script .cgi@AddHandler cgi-script .cgi .pl@" /usr/local/apache/conf/httpd.conf;
-#######################################
+##########
 mkdir -p /home/{wwwroot,wwwlogs}
 mkdir -p /home/wwwroot/default
 mkdir -p /usr/local/apache/conf/vhost
@@ -202,10 +196,12 @@ rm -rf ${aprversion}
 rm -rf ${aprutilversion}
 
 #Options 所有前面加有"+"号的可选项将强制覆盖当前的可选项设置，而所有前面有"-"号的可选项将强制从当前可选项设置中去除
-#Options -Indexes FollowSymLinks #不允许目录游览，允许符号链接。
+#Options -Indexes FollowSymLinks #不允许目录游览，允许符号链接
 #Options Indexes                 #表示启用目录浏览
-#Options FollowSymLinks ExecCGI  #允许目录游览和符号链接，允许使用mod_cgi模块执行CGI脚本。
+#Options FollowSymLinks ExecCGI  #允许目录游览和符号链接，允许使用mod_cgi模块执行CGI脚本
+#
 #AllowOverride None              #表示禁止用户对目录配置文件（.htaccess进行修改）重载
 #AllowOverride All               #rewrite规则会写在 .htaccess 文件里
-#Includes 启用SSL
-#IncludesNoExec 启用SSL，但使EXEC指令无效
+#
+#Includes                            #启用SSI （Server Side Include）规范有效 <!--#exec cmd="..."-->  <!--#exec cgi="..."-->  <!--#include file="..."-->
+#IncludesNoExec                 #启用SSI （Server Side Include），但EXEC指令无效（执行CGI程序的指令） <!--#include file="..."-->规范有效  ，<!--#exec cmd="..."-->  <!--#exec cgi="..."-->  exec等程序执行将受到限制不能执行

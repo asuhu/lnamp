@@ -1,36 +1,30 @@
 #!/bin/bash
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
-
+#
 ###############################################################################
+#PHP5.6.40 (need) . WARNING: This bison version is not supported for regeneration of the Zend/PHP parsers (found: 3.0, min: 204, excluded: 3.0).
+#bison-3.5.2 src/InadequacyList.c:37: error: #pragma GCC diagnostic not allowed inside functi ons
+#bisonversion=`bison --version | head -n 1|awk '{print $NF}'|awk -F "." '{print $1}'`
 install_56_bison() {
 yum -y install bison bison-devel
-if ! which gcc;then yum -y install gcc;fi
-#PHP5.6.40 (need) . WARNING: This bison version is not supported for regeneration of the Zend/PHP parsers (found: 3.0, min: 204, excluded: 3.0).
-#bisonversion=`bison --version | head -n 1|awk '{print $NF}'|awk -F "." '{print $1}'`
-#if [ ${bisonversion} -eq 2 ];then
+if ! which gcc;then yum -y install gcc gcc-c++;fi
 cd ~
-wget http://ftp.gnu.org/gnu/bison/bison-3.5.2.tar.gz
-tar -zxf bison-3.5.2.tar.gz && rm -rf bison-3.5.2.tar.gz
-cd bison-3.5.2
+wget http://ftp.gnu.org/gnu/bison/bison-3.4.2.tar.gz
+tar -zxf bison-3.4.2.tar.gz && rm -rf bison-3.4.2.tar.gz
+cd bison-3.4.2
  ./configure
 make -j ${THREAD} && make install
 cd ~
-rm -rf bison-3.5.2
+rm -rf bison-3.4.2
 }
-###############################################################################
-
-install_re2c(){
-wget -4  --no-check-certificate https://github.com/skvadrik/re2c/releases/download/1.1.1/re2c-1.1.1.tar.gz
-}
-
 ############install_nghttp2####################################
 install_nghttp2(){
 #yum -y install jansson-devel
 #configure: No package 'jansson' found 和nghttp2冲突     #nghttp2  https://github.com/nghttp2/nghttp2/releases
 
 if [ ! -d /usr/local/nghttp2  ];then
-nghttp2version=nghttp2-1.40.0
+nghttp2version=nghttp2-1.41.0
 cd ~
   if wget -4 http://file.asuhu.com/so/${nghttp2version}.tar.gz
   then
@@ -58,7 +52,6 @@ fi
 cd ~
 rm -rf ${nghttp2version}
 }
-############install_nghttp2####################################
 ############install_curl#######################################
 install_curl(){
 yum -y install autoconf            #如果不安装，这一步会错误/usr/local/php/bin/phpize
@@ -88,11 +81,8 @@ sudo yum -y install libpsl libpsl-devel libidn2 libidn2-devel               #cen
 #########取消安装
 #yum -y install libssh2-devel#取消安装，不然会冲突
 #wget https://www.libssh2.org/download/libssh2-1.8.0.tar.gz
-#tar -zxf libssh2-1.8.0.tar.gz
-#cd libssh2-1.8.0
 #CFLAGS="-I/usr/local/openssl/include" ./configure --prefix=/usr/local/libssh2
 #unset CFLAGS
-#unset LDFLAGS
 #/usr/bin/ld: warning: libssl.so.10, needed by /usr/local/libssh2/lib/libssh2.so.1, may conflict with libssl.so.1.0.0
 #/usr/bin/ld: warning: libcrypto.so.10, needed by /usr/local/libssh2/lib/libssh2.so.1, may conflict with libcrypto.so.1.0.0
 #ldconfig: Can't stat /libx32: No such file or directory
@@ -104,7 +94,6 @@ install_nghttp2
 else
 echo "Already installed nghttp2"
 fi
-
 
 if [ ! -d /usr/local/zlib ];then
 cd ~
@@ -120,16 +109,14 @@ else
 echo "Already installed zlib"
 fi
 
-
 if [ ! -d /usr/local/openssl ];then
 install_phpopenssl
 else
 echo "Already installed openssl"
 fi
 
-
 cd ~
-curlversion=curl-7.67.0
+curlversion=curl-7.72.0
 wget --no-check-certificate -4 -q https://curl.haxx.se/download/$curlversion.tar.gz
 tar -zxf ${curlversion}.tar.gz && rm -rf ${curlversion}.tar.gz
 cd ${curlversion}
@@ -151,7 +138,6 @@ fi
 cd ~
 rm -rf ${curlversion}
 }
-############install_curl#######################################
 ############install_phpopenssl#######################
 install_phpopenssl(){
 #https://wiki.openssl.org/index.php/Compilation_and_Installation
@@ -162,7 +148,7 @@ install_phpopenssl(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 --no-check-certificate  https://www.openssl.org/source/openssl-1.0.2-latest.tar.gz
+wget -4 --no-check-certificate -O openssl-1.0.2-latest.tar.gz  https://www.openssl.org/source/old/1.0.2/openssl-1.0.2u.tar.gz
 tar -zxf openssl-1.0.2-latest.tar.gz && rm -rf openssl-1.0.2-latest.tar.gz && mv openssl-1.0.2? openssl-1.0.2-latest
 cd ~/openssl-1.0.2-latest
 make clean
@@ -192,16 +178,13 @@ rm -rf openssl-1.0.2-latest
 wget -4 -O /usr/local/openssl/cert.pem http://curl.haxx.se/ca/cacert.pem
 #升级curl就会出现这个问题 OpenSSL Error messages: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify
 }
-
-#####################################################
 ############install_phpopenssl111##################
 install_phpopenssl111(){
 #no-shared：指示生成静态库    shared 生成动态库文件，需要配合echo "/usr/local/openssl/lib" > /etc/ld.so.conf.d/openssl.conf
-#/usr/bin/ld: /usr/local/openssl/lib/libssl.a(s3_clnt.o): relocation R_X86_64_32 against `.rodata' can not be used when making a shared object; recompile with -fPIC
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 --no-check-certificate  https://www.openssl.org/source/openssl-1.1.1-latest.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1g.tar.gz
 tar -zxf openssl-1.1.1-latest.tar.gz && rm -rf openssl-1.1.1-latest.tar.gz && mv openssl-1.1.1? openssl-1.1.1-latest
 cd ~/openssl-1.1.1-latest
 ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib-dynamic 2>&1 >~/phpopenssl-1.1.1-latest.log
@@ -217,7 +200,6 @@ mv /usr/bin/openssl /usr/bin/openssl`date "+%Y%m%d%H%M%S"`
       echo "openssl-1.1.1 install failed"
       kill -9 $$
     fi
-
 echo "/usr/local/openssl/lib" > /etc/ld.so.conf.d/openssl.conf
 ldconfig -v
 else
@@ -230,8 +212,7 @@ rm -rf openssl-1.1.1-latest
 wget -4 -O /usr/local/openssl/cert.pem http://curl.haxx.se/ca/cacert.pem
 #升级curl就会出现这个问题 OpenSSL Error messages: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify
 }
-############install_phpopenssl#######################
-
+############install_phpmcrypt()#######################
 #PHP5
 install_phpmcrypt(){
 sudo yum -y install epel-release
@@ -273,7 +254,7 @@ rm -rf ${phpredisvs}
 #
 install_phpredis7() {
 #http://pecl.php.net/package/redis
-phpredisvs=phpredis-5.1.1
+phpredisvs=phpredis-5.2.1
 cd ~
 if wget -4 http://file.asuhu.com/so/${phpredisvs}.tar.gz
 then
@@ -296,13 +277,12 @@ cd ~
 rm -rf ${phpredisvs}
 }
 ####################################################################
-
 #http://pecl.php.net/package/swoole   #Event-driven asynchronous and concurrent networking engine with high performance for PHP.
 install_swoole7() {
 cd ~
-wget -c http://pecl.php.net/get/swoole-4.2.1.tgz
-tar -zxf swoole-4.2.1.tgz && rm -rf swoole-4.2.1.tgz
-cd swoole-4.2.1
+wget -c http://pecl.php.net/get/swoole-4.5.2.tgz
+tar -zxf swoole-4.5.2.tgz && rm -rf swoole-4.5.2.tgz
+cd swoole-4.5.2
 /usr/local/php/bin/phpize
 ./configure --with-php-config=/usr/local/php/bin/php-config
 make -j ${THREAD} && make install
@@ -325,7 +305,22 @@ cat > /usr/local/php/etc/php.d/swoole.ini << EOF
 extension=swoole.so
 EOF
 }
-
+####################################################################
+#http://pecl.php.net/package/yaf
+install_yaf(){
+cd ~
+wget -c http://pecl.php.net/get/yaf-3.2.5.tgz
+tar -zxf yaf-3.2.5.tgz && rm -rf yaf-3.2.5.tgz
+cd yaf-3.2.5
+/usr/local/php/bin/phpize
+./configure --with-php-config=/usr/local/php/bin/php-config
+make -j ${THREAD} && make install
+cat > /usr/local/php/etc/php.d/yaf.ini << EOF
+[yaf]
+extension=yaf.so
+EOF
+}
+####################################################################
 install_xdebug5() {
 cd ~
 wget -4  --no-check-certificate https://xdebug.org/files/xdebug-2.5.5.tgz
@@ -336,7 +331,7 @@ cd xdebug-2.5.5
 make -j ${THREAD} && make install
 
 cat > /usr/local/php/etc/php.d/xdebug.ini << EOF
-[swoole]
+[xdebug]
 zend_extension=xdebug.so
 xdebug.trace_output_dir=/tmp/xdebug
 xdebug.profiler_output_dir = /tmp/xdebug
@@ -355,15 +350,15 @@ rm -rf xdebug-2.5.5
 
 install_xdebug7() {
 cd ~
-wget -4  --no-check-certificate https://xdebug.org/files/xdebug-2.6.1.tgz
-tar -zxf xdebug-2.6.1.tgz && rm -rf xdebug-2.6.1.tgz
-cd xdebug-2.6.1
+wget -4  --no-check-certificate https://xdebug.org/files/xdebug-2.9.6.tgz
+tar -zxf xdebug-2.9.6.tgz && rm -rf xdebug-2.9.6.tgz
+cd xdebug-2.9.6
 /usr/local/php/bin/phpize
 ./configure --enable-xdebug --with-php-config=/usr/local/php/bin/php-config
 make -j ${THREAD} && make install
 
 cat > /usr/local/php/etc/php.d/xdebug.ini << EOF
-[swoole]
+[xdebug]
 zend_extension=xdebug.so
 xdebug.trace_output_dir=/tmp/xdebug
 xdebug.profiler_output_dir = /tmp/xdebug
@@ -376,15 +371,15 @@ xdebug.remote_enable=on
 EOF
 
 cd ~
-rm -rf xdebug-2.6.1
+rm -rf xdebug-2.9.6
 }
-
-
+####################################################################
+#https://pecl.php.net/package/mongodb
 install_pecl_mongodb() {
 cd ~
-wget -4 --no-check-certificate https://pecl.php.net/get/mongodb-1.5.3.tgz
-tar -zxvf mongodb-1.5.3.tgz && rm -rf mongodb-1.5.3.tgz
-cd mongodb-1.5.3
+wget -4 --no-check-certificate https://pecl.php.net/get/mongodb-1.8.0.tgz
+tar -zxvf mongodb-1.8.0.tgz && rm -rf mongodb-1.8.0.tgz
+cd mongodb-1.8.0
 /usr/local/php/bin/phpize
  ./configure --with-php-config=/usr/local/php/bin/php-config
 make -j ${THREAD} && make install
@@ -395,25 +390,34 @@ extension=mongodb.so
 EOF
 
 cd ~
-rm -rf mongodb-1.5.3
+rm -rf mongodb-1.8.0
 echo "PHP mongodb module installed successfully! "
 }
-
-
+####################################################################
 install_fileinfo() {
-  src_url=https://www.php.net/distributions/php-7.3.4.tar.gz
+  src_url=https://www.php.net/distributions/php-7.3.21.tar.gz
   src_url=https://www.php.net/distributions/php-5.6.40.tar.gz
-    tar xzf php-7.3.4.tar.gz
-cd php-7.3.4/ext/fileinfo
+    tar xzf php-7.3.21.tar.gz
+cd php-7.3.21/ext/fileinfo
 /usr/local/php/bin/phpize
 ./configure --with-php-config=/usr/local/php/bin/php-config
 make -j ${THREAD} && make install
 
 echo 'extension=fileinfo.so' > /usr/local/php/etc/php.d/fileinfo.ini
 }
-
-
-#https://pecl.php.net/package/PDO_IBM
-#https://pecl.php.net/get/PDO_PGSQL-1.0.2.tgz configure: error: Cannot find libpq-fe.h. Please specify correct PostgreSQL installation path     ./configure --with-pgsql=${pgsql_install_dir} --with-php-config=${php_install_dir}/bin/php-config
-#echo 'extension=pgsql.so'
-#echo 'extension=pdo_pgsql.so'
+####################################################################
+#install_56_bison()
+#install_nghttp2()
+#install_curl()
+#install_phpopenssl()
+#install_phpopenssl111()
+#install_phpmcrypt()
+#install_phpredis5()
+#install_phpredis7()
+#install_swoole7()
+#install_swoole5()
+#install_yaf()
+#install_xdebug5()
+#install_xdebug7()
+#install_pecl_mongodb()
+#install_fileinfo()

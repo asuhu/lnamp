@@ -1,12 +1,10 @@
 #!/bin/bash
 #Apache_APACHE2HANDLER
 #used epel-release
-#PHP 5.6.40 is the last scheduled release of PHP 5.6 branch  matching OpenSSL1.0.2
+#PHP 5.6.40 is the last scheduled release of PHP 5.6 branch  matching OpenSSL1.0.2 #https://www.php.net/supported-versions.php
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
-phpstable56=5.6.40
-
 
 if [ $Mem -le 640 ]; then
   Memory_limit=64
@@ -30,23 +28,21 @@ elif [ $Mem -gt 8000 ]; then
   Memory_limit=448
 fi
 
-
-#yum安装
+#init
 yum -y install wget gcc make vim screen epel-release
 if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
 sudo yum-config-manager --enable epel
 yum -y install libxml2 libxml2-devel curl-devel libjpeg-devel libpng-devel freetype-devel  bzip2 bzip2-devel net-snmp-devel gmp-devel zlib-devel bison gd-devel 
 yum -y install python python-devel        #checking consistency of all components of python development environment... no
 yum -y install CUnit CUnit-devel          #configure: WARNING: No package 'cunit' found
+yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 
 #yum -y install jansson-devel             #configure: No package 'jansson' found 和nghttp2冲突
 #yum -y openldap-devel
 #/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libssl.so.1.0.0
-#/usr/bin/ld: warning: libcrypto.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libcrypto.so.1.0.0
 
 if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
 
-yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 #Source installation bison libmcrypt openssl和curl(含zlib)
 source ~/sh/function.sh
 install_56_bison
@@ -54,11 +50,11 @@ install_phpmcrypt
 install_phpopenssl
 install_curl
 
-
+#Download PHP5
 cd ~
-wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${phpstable56}.tar.gz   #http://jp2.php.net/distributions/php-${phpstable56}.tar.gz
-tar -zxf php-${phpstable56}.tar.gz && rm -rf php-${phpstable56}.tar.gz 
-cd php-${phpstable56}
+wget -4 -q --no-check-certificate https://www.php.net/distributions/php-5.6.40.tar.gz   #http://jp2.php.net/distributions/php-5.6.40.tar.gz
+tar -zxf php-5.6.40.tar.gz && rm -rf php-5.6.40.tar.gz 
+cd php-5.6.40
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
 --with-apxs2=/usr/local/apache/bin/apxs \
 --with-config-file-path=/usr/local/php/etc --with-config-file-scan-dir=/usr/local/php/etc/php.d \
@@ -74,12 +70,14 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
 --enable-mbregex --enable-mbstring \
 --enable-ftp --enable-gd-native-ttf --enable-pcntl --enable-sockets --enable-zip --enable-soap --enable-exif \
 --disable-ipv6 --disable-debug --disable-fileinfo
-
+#--with-ldap \
+#--with-ldap-sasl \
 make -j ${THREAD} && make install
 
 mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
+
 #添加用户和权限apache
-id -u apache >/dev/null 2>&1
+    id -u apache >/dev/null 2>&1
     [ $? -ne 0 ] && useradd -M -s /sbin/nologin apache
 chown apache.apache -R /usr/local/php;
 
@@ -89,12 +87,10 @@ echo -e "\033[31m Install php error ... \033[0m \n"
 kill -9 $$
 fi
 
-#apache结合php的配置
 chown apache.apache -R /usr/local/php
-cd ~/php-${phpstable56}/php.ini-production  /usr/local/php/etc/php.ini;
-
+cd ~/php-5.6.40/php.ini-production  /usr/local/php/etc/php.ini;
 #php.ini优化
-#memory_limit用来限制PHP所占用的内存的
+#memory_limit用来限制PHP所占用的内存的，具体一点说就是一个PHP工作进程即php-fpm所能够使用的最大内存，默认是128MB
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
 sed -i "s@^memory_limit.*@memory_limit = 64M@" /usr/local/php/etc/php.ini
 elif [ $Mem -gt 2500 -a $Mem -le 3500 ];then
@@ -120,11 +116,11 @@ sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
 
-#探针
+#php_proble
 wget -t 3 -O /home/wwwroot/default/proble.tar.gz http://file.asuhu.com/so/proble.tar.gz
 cd /home/wwwroot/default && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
 
-#php扩展 opcache.ini可能造成内存泄露 zend_mm_heap corrupted #https://github.com/lj2007331/lnmp/blob/master/include/php-5.6.sh
+#PHPopcache扩展，可能造成内存泄露 zend_mm_heap corrupted #https://github.com/lj2007331/lnmp/blob/master/include/php-5.6.sh
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
 [opcache]
 zend_extension=opcache.so
@@ -139,11 +135,9 @@ opcache.enable_cli=1
 ;opcache.optimization_level=0
 EOF
 
-#apache 2.4.27 prefork不支持http2,worker evnet需要线程安全
-
 ########################################
 cd ~
-#ioncube_loader安装
+#PHP线程安全Thread Safe (TS)和非线程安全Non-Thread Safe (NTS)，ioncube_loader安装
 if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20131226 ];then
 #http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
 php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20131226
@@ -210,8 +204,8 @@ EOF
 #source ~/sh/function.sh
 #install_phpredis5
 
-#libtool: install: install .libs/libphp5.so /usr/local/apache/modules/libphp5.so  install: warning: remember to run `libtool --finish /root/php-5.6.30/libs
-#libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
+#libtool: install: install .libs/libphp5.so /usr/local/apache/modules/libphp5.so  install: warning: remember to run `libtool --finish /root/php-5.6.40/libs
+#libtool: warning: remember to run 'libtool --finish /root/php-5.6.40/libs'
 #/usr/bin/libtool --version    ltmain.sh (GNU libtool) 2.2.6b
 #/root/php/libtool --version   ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
 #/usr/local/apache/build/libtool --version    libtool (GNU libtool) 2.4.6
@@ -223,4 +217,4 @@ libtool --finish /usr/local/php/lib
 #path
 echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
-rm -rf php-${phpstable56}
+rm -rf php-5.6.40

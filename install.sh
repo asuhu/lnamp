@@ -31,13 +31,6 @@ source ~/sh/swap.sh
 lscpu  >/dev/null 2>&1
 [ $? -eq 0 ] && install_swap
 
-#cd ~
-#wget http://mirrors.nju.edu.cn/gnu/libtool/libtool-2.4.6.tar.gz
-#tar -zxvf libtool-2.4.6.tar.gz
-#cd libtool-2.4.6
-#./configure --prefix=/usr
-#make && make install
-
 yum remove httpd* php* mysql-server mysql* php-mysql -y
 yum -y groupremove "FTP Server" "PostgreSQL Database client" "PostgreSQL Database server" "MySQL Database server" "MySQL Database client" "Web Server" "Office Suite and Productivity" "E-mail server" "Ruby Support" "Printing client"
 yum -y install curl wget gcc screen python gcc-c++ make vim screen git lsof net-tools
@@ -55,15 +48,15 @@ next() {
 }
 
 #Display Version
-nginx_openssl=Nginx1.16
+nginx_openssl=Nginx1.18
 apache=Apache2.2.34_prefork_No_Support_HTTP2
 apache_openssl='Apache2.4_latest_event_HTTP2'
 php5apache=PHP5.6_Apache
 php7apache=PHP7.3_Apache
 php5=PHP5.6.40_Nginx
 php7=PHP7.3_Nginx
-mysql6='Mysql5.6_latest'
-mysql7='Mysql5.7_latest(Memory greater than 2000M)'
+mysql6='Mysql5.6_Latest'
+mysql7='Mysql5.7_Latest(Mem greater than 2000 megabytes)'
 
 
 #SSH”≈ªØ
