@@ -116,7 +116,7 @@ echo "Already installed openssl"
 fi
 
 cd ~
-curlversion=curl-7.75.0
+curlversion=curl-7.79.1
 wget --no-check-certificate -4 -q https://curl.haxx.se/download/$curlversion.tar.gz
 tar -zxf ${curlversion}.tar.gz && rm -rf ${curlversion}.tar.gz
 cd ${curlversion}
@@ -175,7 +175,8 @@ ldconfig -v
 
 cd ~
 rm -rf openssl-1.0.2-latest
-wget -4 -O /usr/local/openssl/cert.pem http://curl.haxx.se/ca/cacert.pem
+#wget '--no-check-certificate' -4 -O /usr/local/openssl/cert.pem https://curl.haxx.se/ca/cacert.pem
+wget '--no-check-certificate' -4 -O /usr/local/openssl/cert.pem https://curl.se/ca/cacert.pem
 #升级curl就会出现这个问题 OpenSSL Error messages: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify
 }
 ############install_phpopenssl111##################
@@ -209,7 +210,8 @@ ldconfig -v
 
 cd ~
 rm -rf openssl-1.1.1-latest
-wget -4 -O /usr/local/openssl/cert.pem http://curl.haxx.se/ca/cacert.pem
+#wget '--no-check-certificate' -4 -O /usr/local/openssl/cert.pem https://curl.haxx.se/ca/cacert.pem
+wget '--no-check-certificate' -4 -O /usr/local/openssl/cert.pem https://curl.se/ca/cacert.pem
 #升级curl就会出现这个问题 OpenSSL Error messages: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify
 }
 ############install_phpmcrypt()#######################
