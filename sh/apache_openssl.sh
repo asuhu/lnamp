@@ -11,7 +11,7 @@ fi
 
 apstable=$(curl -s https://httpd.apache.org/download.cgi#apache24 | grep "latest available version"| awk '{print $5}')
 if [ -z $apstable ];then
-apstable=2.4.41
+apstable=2.4.46
 else
 echo "Apache2.4 version check ok"
 fi

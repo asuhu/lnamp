@@ -116,7 +116,7 @@ echo "Already installed openssl"
 fi
 
 cd ~
-curlversion=curl-7.72.0
+curlversion=curl-7.75.0
 wget --no-check-certificate -4 -q https://curl.haxx.se/download/$curlversion.tar.gz
 tar -zxf ${curlversion}.tar.gz && rm -rf ${curlversion}.tar.gz
 cd ${curlversion}
@@ -148,7 +148,7 @@ install_phpopenssl(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 --no-check-certificate -O openssl-1.0.2-latest.tar.gz  https://www.openssl.org/source/old/1.0.2/openssl-1.0.2u.tar.gz
+wget -4 --no-check-certificate -O openssl-1.0.2-latest.tar.gz  http://qnvideo.henan100.net/openssl-1.0.2u.tar.gz
 tar -zxf openssl-1.0.2-latest.tar.gz && rm -rf openssl-1.0.2-latest.tar.gz && mv openssl-1.0.2? openssl-1.0.2-latest
 cd ~/openssl-1.0.2-latest
 make clean
@@ -184,7 +184,7 @@ install_phpopenssl111(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1g.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz http://qnvideo.henan100.net/openssl-1.1.1-latest.tar.gz
 tar -zxf openssl-1.1.1-latest.tar.gz && rm -rf openssl-1.1.1-latest.tar.gz && mv openssl-1.1.1? openssl-1.1.1-latest
 cd ~/openssl-1.1.1-latest
 ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib-dynamic 2>&1 >~/phpopenssl-1.1.1-latest.log

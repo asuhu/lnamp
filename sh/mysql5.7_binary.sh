@@ -11,7 +11,7 @@ Mem=$( free -m | awk '/Mem/ {print $2}' )
 #define
 mysql_install_dir=/usr/local/mysql
 mysql_data_dir=/usr/local/mysql/data
-sqlstable=5.7.27
+sqlstable=5.7.33
 glibcstable=glibc2.12
 #mysql account
     id -u mysql >/dev/null 2>&1

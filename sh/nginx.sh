@@ -1,7 +1,7 @@
 #!/bin/bash
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Bit=$(getconf LONG_BIT)
-ngstable=1.18.0
+ngstable=1.20.1
 zlibstable=1.2.11
 pcrestable=8.44
 Google_ip=216.58.200.4
@@ -32,7 +32,7 @@ yum -y install zlib-devel
 if ping -c 2 ${Google_ip} >/dev/null;then
 wget -4 -q http://zlib.net/zlib-${zlibstable}.tar.gz
 wget -4 -q --no-check-certificate https://ftp.pcre.org/pub/pcre/pcre-${pcrestable}.tar.gz
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1g.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1l.tar.gz
 wget -4 -q http://nginx.org/download/nginx-${ngstable}.tar.gz
 else
 wget -4 -q ${Within_China}/zlib-${zlibstable}.tar.gz

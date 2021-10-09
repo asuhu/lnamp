@@ -61,7 +61,7 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php73_ver=7.3.21
+php73_ver=7.3.31
 cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php73_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php73_ver}.tar.gz
 tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
