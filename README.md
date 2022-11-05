@@ -3,8 +3,8 @@
 ##### Nginx
 
 <li>Nginx/1.22 built with OpenSSL 1.1.1</li>
-<li>define NGINX_VAR for Microsoft-IIS/10.0<li>
-<li>define NGX_HTTP_AUTOINDEX_PREALLOCATE  50 to 150<li>
+<li>define NGINX_VAR for Microsoft-IIS/10.0</li>
+<li>define NGX_HTTP_AUTOINDEX_PREALLOCATE  50 to 150</li>
 <li>TLS SNI support enabled</li>
 <li>多个Nginx HTTPS配置和反向代理配置</li>
 
@@ -16,6 +16,7 @@
 ##### PHP
 
 <li>PHP5.6.40(PHP 5.6.40 is the last scheduled release of PHP 5.6 branch)</li>
+<li>PHP7.3</li>
 <li>PHP7.4</li>
 <li>PHP扩展模块 Zend OPcache、Zend Guard Loader、ionCube Loader、 phpredis、swoole、xdebug、fileinfo、snmp(支持zabbix、cacti、Nagios)、imagick</li>
 <li>phpMyAdmin</li>
