@@ -48,13 +48,13 @@ next() {
 }
 
 #Display Version
-nginx_openssl=Nginx1.18
+nginx_openssl=Nginx1.22
 apache=Apache2.2.34_prefork_No_Support_HTTP2
 apache_openssl='Apache2.4_latest_event_HTTP2'
 php5apache=PHP5.6_Apache
 php7apache=PHP7.3_Apache
 php5=PHP5.6.40_Nginx
-php7=PHP7.3_Nginx
+php7=PHP7.4_Nginx
 mysql6='Mysql5.6_Latest'
 mysql7='Mysql5.7_Latest(Mem greater than 2000 megabytes)'
 
@@ -172,6 +172,7 @@ exit 1
         [ -z "$Web_version" ] && Web_version=3
         if [[ ! $Web_version =~ ^[1-5]$ ]]; then
           echo "input error! Please only input number 1,2,3,4,5"
+          kill -9 $$
         fi
     fi
   fi
@@ -188,10 +189,11 @@ exit 1
         echo -e "\033[33m 2 $php7apache \033[0m"
         echo -e "\033[31m 3 $php5 \033[0m"
         echo -e "\033[31m 4 $php7 \033[0m"
-        read -p "Please input a number:(Default 3 press Enter) " PHP_version
-        [ -z "$PHP_version" ] && PHP_version=3
+        read -p "Please input a number:(Default 4 press Enter) " PHP_version
+        [ -z "$PHP_version" ] && PHP_version=4
         if [[ ! $PHP_version =~ ^[1-4]$ ]]; then
           echo "input error! Please only input number 1,2,3,4"
+          kill -9 $$
         fi
     fi
   fi
@@ -212,6 +214,7 @@ exit 1
         [ -z "$Db_version" ] && Db_version=1
         if [[ ! $Db_version =~ ^[1-4]$ ]]; then
           echo "input error! Please only input number 1,2,3,4"
+          kill -9 $$
         fi
     fi
   fi 

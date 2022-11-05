@@ -10,7 +10,7 @@ install_56_bison() {
 yum -y install bison bison-devel
 if ! which gcc;then yum -y install gcc gcc-c++;fi
 cd ~
-wget http://ftp.gnu.org/gnu/bison/bison-3.4.2.tar.gz
+wget -4 --no-check-certificate http://ftp.gnu.org/gnu/bison/bison-3.4.2.tar.gz
 tar -zxf bison-3.4.2.tar.gz && rm -rf bison-3.4.2.tar.gz
 cd bison-3.4.2
  ./configure
@@ -26,11 +26,11 @@ install_nghttp2(){
 if [ ! -d /usr/local/nghttp2  ];then
 nghttp2version=nghttp2-1.41.0
 cd ~
-  if wget -4 http://file.asuhu.com/so/${nghttp2version}.tar.gz
+  if wget -4 --no-check-certificate https://www.zhangfangzhou.cn/third/so/${nghttp2version}.tar.gz
   then
   echo "download nghttp2 success"
   else
-  wget -4 http://arv.asuhu.com/ftp/so/${nghttp2version}.tar.gz
+  wget -4 --no-check-certificate http://arv.asuhu.com/ftp/so/${nghttp2version}.tar.gz
   fi
 tar -zxf $nghttp2version.tar.gz;rm -rf $nghttp2version.tar.gz;
 cd $nghttp2version
@@ -58,7 +58,7 @@ yum -y install autoconf            #如果不安装，这一步会错误/usr/local/php/bin/p
 autoconfversion=`autoconf --version | head -n 1 | awk '{print $4}'|grep -Po [0-9]  | tail -n 1`
 if [ $autoconfversion -eq 3 ]; then
 cd /tmp/
-wget -4 http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+wget -4 --no-check-certificate http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
 tar -zxvf autoconf-2.69.tar.gz
 cd /tmp/autoconf-2.69
 ./configure
@@ -97,7 +97,7 @@ fi
 
 if [ ! -d /usr/local/zlib ];then
 cd ~
-wget -4 http://zlib.net/zlib-1.2.11.tar.gz
+wget --no-check-certificate -4 http://zlib.net/zlib-1.2.11.tar.gz
 tar -zxvf zlib-1.2.11.tar.gz && rm -rf zlib-1.2.11.tar.gz
 cd zlib-1.2.11
 ./configure  --prefix=/usr/local/zlib
@@ -148,7 +148,7 @@ install_phpopenssl(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 --no-check-certificate -O openssl-1.0.2-latest.tar.gz  http://qnvideo.henan100.net/openssl-1.0.2u.tar.gz
+wget -4 --no-check-certificate -O openssl-1.0.2-latest.tar.gz  https://www.zhangfangzhou.cn/third/openssl-1.0.2u.tar.gz
 tar -zxf openssl-1.0.2-latest.tar.gz && rm -rf openssl-1.0.2-latest.tar.gz && mv openssl-1.0.2? openssl-1.0.2-latest
 cd ~/openssl-1.0.2-latest
 make clean
@@ -185,7 +185,7 @@ install_phpopenssl111(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz http://qnvideo.henan100.net/openssl-1.1.1-latest.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.zhangfangzhou.cn/third/openssl-1.1.1s.tar.gz
 tar -zxf openssl-1.1.1-latest.tar.gz && rm -rf openssl-1.1.1-latest.tar.gz && mv openssl-1.1.1? openssl-1.1.1-latest
 cd ~/openssl-1.1.1-latest
 ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib-dynamic 2>&1 >~/phpopenssl-1.1.1-latest.log
@@ -221,9 +221,9 @@ sudo yum -y install epel-release
 if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
 sudo yum-config-manager --enable epel
 yum -y install mhash mhash-devel libmcrypt libmcrypt-devel mcrypt
-#wget http://file.asuhu.com/ex/libmcrypt-2.5.8.tar.gz
-#wget http://file.asuhu.com/ex/mhash-0.9.9.9.tar.gz
-#wget http://file.asuhu.com/ex/mcrypt-2.6.8.tar.gz
+#wget https://www.zhangfangzhou.cn/third/ex/libmcrypt-2.5.8.tar.gz
+#wget https://www.zhangfangzhou.cn/third/ex/mhash-0.9.9.9.tar.gz
+#wget https://www.zhangfangzhou.cn/third/ex/mcrypt-2.6.8.tar.gz
 }
 
 ####################################################################
@@ -233,11 +233,11 @@ install_phpredis5() {
 phpredisvs=phpredis-4.3.0
 cd ~
 
-if wget -4 http://file.asuhu.com/so/${phpredisvs}.tar.gz
+if wget -4 --no-check-certificate https://www.zhangfangzhou.cn/third/so/${phpredisvs}.tar.gz
 then
 echo "download phpredis success"
 else
-wget -4 http://arv.asuhu.com/ftp/so/${phpredisvs}.tar.gz
+wget -4 --no-check-certificate http://arv.asuhu.com/ftp/so/${phpredisvs}.tar.gz
 fi
 
 tar -zxvf ${phpredisvs}.tar.gz && rm -rf ${phpredisvs}.tar.gz
@@ -258,11 +258,11 @@ install_phpredis7() {
 #http://pecl.php.net/package/redis
 phpredisvs=phpredis-5.2.1
 cd ~
-if wget -4 http://file.asuhu.com/so/${phpredisvs}.tar.gz
+if wget -4 --no-check-certificate https://www.zhangfangzhou.cn/third/so/${phpredisvs}.tar.gz
 then
 echo "download phpredis success"
 else
-wget -4 http://arv.asuhu.com/ftp/so/${phpredisvs}.tar.gz
+wget -4 --no-check-certificate http://arv.asuhu.com/ftp/so/${phpredisvs}.tar.gz
 fi
 
 tar -zxvf ${phpredisvs}.tar.gz && rm -rf ${phpredisvs}.tar.gz
@@ -282,7 +282,7 @@ rm -rf ${phpredisvs}
 #http://pecl.php.net/package/swoole   #Event-driven asynchronous and concurrent networking engine with high performance for PHP.
 install_swoole7() {
 cd ~
-wget -c http://pecl.php.net/get/swoole-4.5.2.tgz
+wget -4 --no-check-certificate -c http://pecl.php.net/get/swoole-4.5.2.tgz
 tar -zxf swoole-4.5.2.tgz && rm -rf swoole-4.5.2.tgz
 cd swoole-4.5.2
 /usr/local/php/bin/phpize
@@ -296,7 +296,7 @@ EOF
 
 install_swoole5() {
 cd ~
-wget -c http://pecl.php.net/get/swoole-1.10.5.tgz
+wget -c -4 --no-check-certificate http://pecl.php.net/get/swoole-1.10.5.tgz
 tar -zxf swoole-1.10.5.tgz && rm -rf swoole-1.10.5.tgz
 cd swoole-1.10.5
 /usr/local/php/bin/phpize
@@ -311,7 +311,7 @@ EOF
 #http://pecl.php.net/package/yaf
 install_yaf(){
 cd ~
-wget -c http://pecl.php.net/get/yaf-3.2.5.tgz
+wget -c -4 --no-check-certificate http://pecl.php.net/get/yaf-3.2.5.tgz
 tar -zxf yaf-3.2.5.tgz && rm -rf yaf-3.2.5.tgz
 cd yaf-3.2.5
 /usr/local/php/bin/phpize
@@ -406,6 +406,23 @@ cd php-7.3.21/ext/fileinfo
 make -j ${THREAD} && make install
 
 echo 'extension=fileinfo.so' > /usr/local/php/etc/php.d/fileinfo.ini
+}
+####################################################################
+#Imagick is a native php extension to create and modify images using the ImageMagick API.This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.
+install_imagick() {
+yum install ImageMagick ImageMagick-devel -y
+wget --no-check-certificate https://pecl.php.net/get/imagick-3.7.0.tgz
+tar -xzvf imagick-3.7.0.tgz
+cd imagick-3.4.4
+/usr/local/php/bin/phpize
+#不知道phpize路径的话，请执行下边命令
+./configure --with-php-config=/usr/local/php/bin/php-config
+make && make install
+
+cat > /usr/local/php/etc/php.d/imagick.ini << EOF
+[imagick]
+extension = imagick.so
+EOF
 }
 ####################################################################
 #install_56_bison()

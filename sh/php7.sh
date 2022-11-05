@@ -4,12 +4,10 @@
 #PHP7.3 matching OpenSSL1.1.1 
 #https://www.php.net/manual/en/zip.installation.php
 #As of PHP 7.3.0, building against the bundled libzip is discouraged, but still possible by adding --without-libzip to the configuration.
-
+if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
-
-
 
 if  [ ! -n "$(grep ' 7\.' /etc/redhat-release)" ] ;then
 echo "PHP7 Need CentOS_7"
@@ -45,13 +43,12 @@ sudo yum -y install libxml2 libxml2-devel libjpeg-devel libpng-devel freetype-de
 sudo yum -y install python python-devel        #checking consistency of all components of python development environment... no
 sudo yum -y install CUnit CUnit-devel          #configure: WARNING: No package 'cunit' found
 sudo yum -y install libicu-devel
+sudo yum -y install sqlite-devel oniguruma-devel libsodium-devel
 
-#yum -y install jansson-devel                  #configure: No package 'jansson' found 和nghttp2冲突
+#yum -y install jansson-devel                    #configure: No package 'jansson' found 和nghttp2冲突
 #yum -y install openldap-devel
 #/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libssl.so.1.0.0
 #/usr/bin/ld: warning: libcrypto.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libcrypto.so.1.0.0
-
-if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
 
 yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 #Cancel installation libmcrypt
@@ -61,26 +58,25 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php73_ver=7.3.31
+php74_ver=7.4.32
 cd ~
-wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php73_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php73_ver}.tar.gz
-tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php74_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php74_ver}.tar.gz
+tar -zxf php-${php74_ver}.tar.gz && rm -rf php-${php74_ver}.tar.gz
 
 #PHP7.3 New features
 cd ~
 argon2_ver=argon2-20171227
 if [ ! -e "/usr/lib/libargon2.a" ]; then
-wget -4 -q http://file.asuhu.com/so/${argon2_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${argon2_ver}.tar.gz
 tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
 cd ~/${argon2_ver}
 make -j ${THREAD} && make install
-
 fi
 
 cd ~
 libsodium_ver=libsodium-1.0.18
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-wget -4 -q http://file.asuhu.com/so/${libsodium_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${libsodium_ver}.tar.gz
 tar -zxf ${libsodium_ver}.tar.gz && rm -rf ${libsodium_ver}.tar.gz
 cd ~/${libsodium_ver}
 ./configure --disable-dependency-tracking --enable-minimal
@@ -101,39 +97,37 @@ else
 rm -rf  ~/${argon2_ver}
 fi
 
-
 #libzip https://blog.csdn.net/zhangatle/article/details/90169494
 yum -y remove libzip libzip-devel
 cd ~
-wget https://libzip.org/download/libzip-1.3.0.tar.gz
-tar -zxf libzip-1.3.0.tar.gz && rm -rf libzip-1.3.0.tar.gz
-cd libzip-1.3.0
+wget --no-check-certificate https://libzip.org/download/libzip-1.2.0.tar.gz
+tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
+cd libzip-1.2.0
 ./configure
 make && make install
 cd ~
-rm -rf ~/libzip-1.3.0
+rm -rf ~/libzip-1.2.0
 cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
 #libzip
 
 #ld.so.conf.d
 [ -z "`grep /usr/local/lib /etc/ld.so.conf.d/*.conf`" ] && echo '/usr/local/lib' > /etc/ld.so.conf.d/local.conf
-ldconfig
+ldconfig -v
 
-cd ~/php-${php73_ver}
+cd ~/php-${php74_ver}
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
 --with-config-file-path=/usr/local/php/etc \
 --with-config-file-scan-dir=/usr/local/php/etc/php.d \
 --enable-fpm --with-fpm-user=www --with-fpm-group=www \
 --enable-opcache \
 --enable-mysqlnd --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd \
---with-iconv-dir=/usr/local  --with-freetype-dir --with-jpeg-dir --with-png-dir \
---with-libxml-dir=/usr --enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-exif \
+--with-iconv-dir=/usr/local \
+--enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-exif \
 --enable-sysvsem --enable-inline-optimization --enable-mbregex \
---enable-mbstring --with-password-argon2 --with-sodium=/usr/local --with-gd  \
+--enable-mbstring --with-password-argon2 --with-sodium=/usr/local \
 --with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-ftp  --enable-intl --with-xsl \
---with-gettext --enable-zip --enable-soap \
+--with-gettext --enable-soap \
 --with-openssl=/usr/local/openssl --with-curl=/usr/local/curl --with-zlib=/usr/local/zlib \
---enable-wddx \
 --with-snmp=shared --with-gmp \
 --disable-debug --disable-fileinfo
 
@@ -156,16 +150,18 @@ mkdir -p /usr/local/php/etc/php.d   #Scan this dir for additional .ini files
 chown www.www -R /usr/local/php;
 
 if [ ! -e '/usr/local/php/bin/php' ]; then
-echo -e "\033[31m Install PHP${php73_ver} Error ... \033[0m \n"
+echo -e "\033[31m Install PHP${php74_ver} Error ... \033[0m \n"
 kill -9 $$
 fi
-
-cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf         #修改fpm配置php-fpm.conf.default文件名称
-cp /root/php-${php73_ver}/php.ini-production /usr/local/php/etc/php.ini           #复制php.ini配置文件
-cp /root/php-${php73_ver}/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm             #复制php-fpm启动脚本到init.d
-chmod +x /etc/init.d/php-fpm                                                       #赋予执行权限
+#修改fpm配置php-fpm.conf.default文件名称
+cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf
+#复制php.ini配置文件
+cp /root/php-${php74_ver}/php.ini-production /usr/local/php/etc/php.ini
+#复制php-fpm启动脚本到init.d，也可以使用/root/php-${php74_ver}/sapi/fpm/php-fpm.service脚本
+cp /root/php-${php74_ver}/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm
+#赋予执行权限
+chmod +x /etc/init.d/php-fpm
 chkconfig --add php-fpm;chkconfig php-fpm on
-
 
 cd ~
 #php-fpm配置
@@ -226,7 +222,7 @@ env[TEMP] = /tmp
 EOF
 
 #listen = /dev/shm/php-cgi.sock
-################
+#######################################
 #php.ini优化
 #memory_limit用来限制PHP所占用的内存的
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
@@ -252,20 +248,18 @@ sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr
   [ -e /usr/sbin/sendmail ] && sed -i 's@^;sendmail_path.*@sendmail_path = /usr/sbin/sendmail -t -i@' /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
-################
-
+#######################################
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
-wget -t 3 -O  /usr/local/nginx/conf/nginx.conf  http://file.asuhu.com/so/nginx.conf
+wget  --no-check-certificate -t 3 -O /usr/local/nginx/conf/nginx.conf  https://www.zhangfangzhou.cn/third/so/nginx.conf
     if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
 wget -O /usr/local/nginx/conf/nginx.conf http://arv.asuhu.com/ftp/so/nginx.conf
     fi
 
 #探针
-wget -t 3 -O /home/wwwroot/web/proble.tar.gz  http://file.asuhu.com/so/proble.tar.gz
+wget --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/so/proble.tar.gz
 cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
-
-################
+#######################################
 #PHP_opcache
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
 [opcache]
@@ -284,16 +278,15 @@ opcache.fast_shutdown=1
 opcache.consistency_checks=0
 ;opcache.optimization_level=0
 EOF
-################
 #######################################
 cd ~
-#ioncube_loader安装
-if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20180731 ];then
-#http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20180731
-ioncube_loader_path=ioncube_loader_lin_7.3_ts.so
+#ioncube_loader安装，用于解密ioncube encoder加密脚本
+if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20190902 ];then
+#download http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz 
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20190902
+ioncube_loader_path=ioncube_loader_lin_7.4_ts.so
 #
-wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+wget  --no-check-certificate -t 3 -O ${php_extensions_path}/${ioncube_loader_path} https://www.zhangfangzhou.cn/third/so/ioncube/${ioncube_loader_path}
     if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
 wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
@@ -302,11 +295,11 @@ cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
 zend_extension=${ioncube_loader_path}
 EOF
-	elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20180731 ]; then
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20180731
-ioncube_loader_path=ioncube_loader_lin_7.3.so
+	elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20190902 ]; then
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20190902
+ioncube_loader_path=ioncube_loader_lin_7.4.so
 #
-wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+wget --no-check-certificate -t 3 -O ${php_extensions_path}/${ioncube_loader_path} https://www.zhangfangzhou.cn/third/so/ioncube/${ioncube_loader_path}
     if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
 wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
@@ -321,26 +314,28 @@ fi
 #Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
 #ZendGuardLoader 支持 PHP5.5 和 PHP5.6  未支持PHP7
 #ZendGuardLoader 仅支持NTS版本的PHP 
-
-#为了避免冲突，snmp使用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
+#######################################
+#/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
+#为了避免冲突，snmp使用单独的模块--with-snmp=shared
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
 [snmp]
 extension = snmp.so
 EOF
 
-#安装phpredis
+#install phpredis
 #source ~/sh/function.sh
 #install_phpredis7
 
-#CentOS7
-#libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
+#CentOS7 libtool
+#libtool: warning: remember to run 'libtool --finish /root/php-7.4.32/libs'
 #/usr/bin/libtool --version   libtool (GNU libtool) 2.4.2 Copyright (C) 2011 Free Software Foundation, Inc.
-#/root/php-7.3.13/libtool --version ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
+#/root/php-${php74_ver}/libtool --version ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
 
+#Clear
 cd ~
 if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib
 /etc/rc.d/init.d/php-fpm restart
 echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
-rm -rf php-${php73_ver}
+rm -rf php-${php74_ver}

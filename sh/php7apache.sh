@@ -61,7 +61,7 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php73_ver=7.3.31
+php73_ver=7.3.33
 cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php73_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php73_ver}.tar.gz
 tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
@@ -105,13 +105,13 @@ fi
 #libzip https://blog.csdn.net/zhangatle/article/details/90169494
 yum -y remove libzip libzip-devel
 cd ~
-wget https://libzip.org/download/libzip-1.3.0.tar.gz
-tar -zxf libzip-1.3.0.tar.gz && rm -rf libzip-1.3.0.tar.gz
-cd libzip-1.3.0
+wget --no-check-certificate https://libzip.org/download/libzip-1.2.0.tar.gz
+tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
+cd libzip-1.2.0
 ./configure
 make && make install
 cd ~
-rm -rf ~/libzip-1.3.0
+rm -rf ~/libzip-1.2.0
 cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
 #libzip
 

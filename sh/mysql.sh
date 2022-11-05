@@ -22,7 +22,7 @@ mysql_data_dir=/usr/local/mysql/data
 #sqlstable=$(curl -s https://dev.mysql.com/downloads/mysql/5.6.html#downloads | grep "<h1>MySQL Community Server" | awk '{print $4}')
 sqlstable=5.6.51
 if [ -z ${sqlstable} ] ;then
-sqlstable=5.6.50
+sqlstable=5.6.51
 echo "Install MySQL Community Server 5.6.50"
 else
 echo "Install MySQL Community Server ${sqlstable}"

@@ -21,8 +21,8 @@ mysql_data_dir=/data/mysql
 #
 sqlstable57=$(curl -s https://dev.mysql.com/downloads/mysql/5.7.html#downloads | grep "<h1>MySQL Community Server" | awk '{print $4}')
 if [ -z ${sqlstable57} ] ;then
-sqlstable57=5.7.33
-echo "Install MySQL Community Server 5.7.33"
+sqlstable57=5.7.40
+echo "Install MySQL Community Server 5.7.40"
 else
 echo "Install MySQL Community Server ${sqlstable57}"
 fi
@@ -101,7 +101,7 @@ skip-name-resolve
 #skip-networking
 back_log = 300
 
-max_connections = 2000
+max_connections = 6000
 max_connect_errors = 6000
 open_files_limit = 65535
 table_open_cache = 128
@@ -124,7 +124,7 @@ query_cache_limit = 2M
 ft_min_word_len = 4
 log_bin = mysql-bin
 binlog_format = mixed
-expire_logs_days = 60
+expire_logs_days = 180
 
 log_error = ${mysql_data_dir}/mysql-error.log
 slow_query_log = 1
@@ -156,7 +156,6 @@ innodb_lock_wait_timeout = 120
 bulk_insert_buffer_size = 8M
 myisam_sort_buffer_size = 8M
 myisam_max_sort_file_size = 10G
-myisam_repair_threads = 1
 
 interactive_timeout = 28800
 wait_timeout = 28800

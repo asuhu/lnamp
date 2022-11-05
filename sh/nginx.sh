@@ -1,11 +1,11 @@
 #!/bin/bash
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Bit=$(getconf LONG_BIT)
-ngstable=1.20.1
-zlibstable=1.2.11
-pcrestable=8.44
+ngstable=1.22.1
+zlibstable=1.2.13
+pcrestable=8.45
 Google_ip=216.58.200.4
-Within_China=http://qnvideo.henan100.net/
+Within_China=https://www.zhangfangzhou.cn/third/
 
 if ping -c 10 file.asuhu.com >/dev/null;then
 echo "website configuration files check ok"
@@ -31,14 +31,14 @@ cd ~
 yum -y install zlib-devel
 if ping -c 2 ${Google_ip} >/dev/null;then
 wget -4 -q http://zlib.net/zlib-${zlibstable}.tar.gz
-wget -4 -q --no-check-certificate https://ftp.pcre.org/pub/pcre/pcre-${pcrestable}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/pcre-${pcrestable}.tar.gz
 wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1l.tar.gz
-wget -4 -q http://nginx.org/download/nginx-${ngstable}.tar.gz
+wget -4 -q --no-check-certificate http://nginx.org/download/nginx-${ngstable}.tar.gz
 else
-wget -4 -q ${Within_China}/zlib-${zlibstable}.tar.gz
-wget -4 -q ${Within_China}/pcre-${pcrestable}.tar.gz
-wget -4 -q ${Within_China}/openssl-1.1.1-latest.tar.gz
-wget -4 -q ${Within_China}/nginx-${ngstable}.tar.gz
+wget -4 -q --no-check-certificate ${Within_China}/zlib-${zlibstable}.tar.gz
+wget -4 -q --no-check-certificate ${Within_China}/pcre-${pcrestable}.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz ${Within_China}/openssl-1.1.1s.tar.gz
+wget -4 -q --no-check-certificate ${Within_China}/nginx-${ngstable}.tar.gz
 fi
 
 #openssl
