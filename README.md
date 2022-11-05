@@ -41,7 +41,7 @@
 <li>CentOS-6.x</li>
 <li>CentOS-7.x</li>
 <li>RHEL-6.x</li>
-<li>RHEL7-7.x</li>
+<li>RHEL-7.x</li>
 <li>Oracle Linux -6.x</li>
 <li>Oracle Linux -7.x</li>
 
@@ -51,7 +51,7 @@
 cd /root
 yum -y install wget screen curl python
 screen -S lnamp
-wget --no-check-certificate https://blog.asuhu.com/sh/lnamp.tar.gz
+wget --no-check-certificate https://raw.githubusercontent.com/asuhu/lnamp/master/lnamp.tar.gz
 tar -zxvf lnamp.tar.gz
 bash install.sh
 ```
