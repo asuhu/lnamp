@@ -116,8 +116,8 @@ echo "Already installed openssl"
 fi
 
 cd ~
-curlversion=curl-7.79.1
-wget --no-check-certificate -4 -q https://curl.haxx.se/download/$curlversion.tar.gz
+curlversion=curl-7.88.1
+wget --no-check-certificate -4 -q https://www.zhangfangzhou.cn/third/$curlversion.tar.gz
 tar -zxf ${curlversion}.tar.gz && rm -rf ${curlversion}.tar.gz
 cd ${curlversion}
 #./configure --prefix=/usr/local --enable-ldap --enable-ldaps --with-nghttp2 --with-libssh2   CFLAGS="-I/usr/local/include/openssl" LDFLAGS="-L/usr/local/lib" --with-ssl-headers=/usr/local/include/openssl --with-ssl-lib=/usr/local/lib/ 故意出问题查看OpenSSL library version
@@ -185,7 +185,7 @@ install_phpopenssl111(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.zhangfangzhou.cn/third/openssl-1.1.1s.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.zhangfangzhou.cn/third/openssl-1.1.1t.tar.gz
 tar -zxf openssl-1.1.1-latest.tar.gz && rm -rf openssl-1.1.1-latest.tar.gz && mv openssl-1.1.1? openssl-1.1.1-latest
 cd ~/openssl-1.1.1-latest
 ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib-dynamic 2>&1 >~/phpopenssl-1.1.1-latest.log

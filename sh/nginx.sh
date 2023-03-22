@@ -32,12 +32,12 @@ yum -y install zlib-devel
 if ping -c 2 ${Google_ip} >/dev/null;then
 wget -4 -q http://zlib.net/zlib-${zlibstable}.tar.gz
 wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/pcre-${pcrestable}.tar.gz
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1l.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1t.tar.gz
 wget -4 -q --no-check-certificate http://nginx.org/download/nginx-${ngstable}.tar.gz
 else
 wget -4 -q --no-check-certificate ${Within_China}/zlib-${zlibstable}.tar.gz
 wget -4 -q --no-check-certificate ${Within_China}/pcre-${pcrestable}.tar.gz
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz ${Within_China}/openssl-1.1.1s.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz ${Within_China}/openssl-1.1.1t.tar.gz
 wget -4 -q --no-check-certificate ${Within_China}/nginx-${ngstable}.tar.gz
 fi
 

@@ -29,7 +29,8 @@ elif [ $Mem -gt 8000 ]; then
 fi
 
 #init
-yum -y install wget gcc make vim screen epel-release
+sudo yum -y install wget gcc make vim screen epel-release
+sudo yum -y rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
 if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
 sudo yum-config-manager --enable epel
 yum -y install libxml2 libxml2-devel curl-devel libjpeg-devel libpng-devel freetype-devel  bzip2 bzip2-devel net-snmp-devel gmp-devel zlib-devel bison gd-devel 

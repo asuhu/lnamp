@@ -55,6 +55,7 @@ php5apache=PHP5.6_Apache
 php7apache=PHP7.3_Apache
 php5=PHP5.6.40_Nginx
 php7=PHP7.4_Nginx
+php8=PHP8.2_Nginx
 mysql6='Mysql5.6_Latest'
 mysql7='Mysql5.7_Latest(Mem greater than 2000 megabytes)'
 
@@ -118,8 +119,8 @@ cversion=$(cat /etc/redhat-release)
 #netstat -nxltp | grep sshd | head -1 | awk '{print $4}' | cut -d: -f2
 echo -e " Your System Version is \033[41;36m ${cversion}  \033[0m";
 
-#ÅÐ¶ÏCentOS7µÄ·À»ðÇ½×´Ì¬
-systemctl status firewald 2>&1 >/dev/null
+#ÅÐ¶ÏCentOS7µÄ·À»ðÇ½×´Ì¬£¬·À»ðÇ½Î´Æô¶¯Ê±ºòÐÞ¸ÄSSH¶Ë¿Ú
+systemctl status firewalld 2>&1 >/dev/null
 if [ ! $? -eq 0 ] ;then
  [ -z "`grep ^Port /etc/ssh/sshd_config`" ] && ssh_port=22 || ssh_port=`grep ^Port /etc/ssh/sshd_config | awk '{print $2}'`
 read -p "Please input new SSH port(Default: $ssh_port): " new_ssh_port
@@ -189,10 +190,11 @@ exit 1
         echo -e "\033[33m 2 $php7apache \033[0m"
         echo -e "\033[31m 3 $php5 \033[0m"
         echo -e "\033[31m 4 $php7 \033[0m"
+        echo -e "\033[31m 5 $php8 \033[0m"
         read -p "Please input a number:(Default 4 press Enter) " PHP_version
         [ -z "$PHP_version" ] && PHP_version=4
-        if [[ ! $PHP_version =~ ^[1-4]$ ]]; then
-          echo "input error! Please only input number 1,2,3,4"
+        if [[ ! $PHP_version =~ ^[1-5]$ ]]; then
+          echo "input error! Please only input number 1,2,3,4,5"
           kill -9 $$
         fi
     fi
@@ -247,6 +249,8 @@ fi
 ./sh/php5.sh 2>&1 | tee php5.log;
   elif [ "$PHP_version" == '4' ]; then
 ./sh/php7.sh 2>&1 | tee php7.log;
+  elif [ "$PHP_version" == '5' ]; then
+./sh/php82.sh 2>&1 | tee php82.log;
 fi
  
 #mysql
