@@ -201,6 +201,7 @@ cd ~/php-${php82_ver}
 --enable-intl \
 --enable-calendar \
 --enable-static \
+--enable-exif \
 --enable-mysqlnd \
 --enable-gd \
 --enable-fileinfo \
