@@ -411,3 +411,5 @@ libtool --finish /usr/local/php/lib
 echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
 rm -rf php-${php82_ver}
+rm -rf libzip-1.9.2.tar.gz && rm -rf libzip-1.9.2
+rm -rf cmake-3.24.0.tar.gz && rm -rf cmake-3.24.0
