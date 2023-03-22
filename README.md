@@ -18,6 +18,7 @@
 <li>PHP5.6.40(PHP 5.6.40 is the last scheduled release of PHP 5.6 branch)</li>
 <li>PHP7.3</li>
 <li>PHP7.4</li>
+<li>PHP8.2</li>
 <li>PHP扩展模块 Zend OPcache、Zend Guard Loader、ionCube Loader、 phpredis、swoole、xdebug、fileinfo、snmp(支持zabbix、cacti、Nagios)、imagick</li>
 <li>phpMyAdmin</li>
 
@@ -35,7 +36,7 @@
 <li>修改SSH服务端口</li>  	 
 <li>Redis</li>
 <li>Tomcat8 JDK1.8</li>
-<li>curl 7.67.0 (x86_64-pc-linux-gnu) libcurl/7.67.0 OpenSSL/1.1.1d zlib/1.2.11 libidn2/2.3.0 libpsl/0.7.0 (+libicu/50.1.2) nghttp2/1.40.0</li>
+<li>curl 7.88.1 (x86_64-pc-linux-gnu) libcurl/7.88.1 OpenSSL/1.1.1t zlib/1.2.13 libidn2/2.3.4 libpsl/0.7.0 (+libicu/50.1.2) nghttp2/1.41.0</li>
 
 #### Supported System
 
