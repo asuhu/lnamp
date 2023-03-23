@@ -71,7 +71,7 @@ tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
 cd ~
 argon2_ver=argon2-20171227
 if [ ! -e "/usr/lib/libargon2.a" ]; then
-wget -4 -q http://file.asuhu.com/so/${argon2_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${argon2_ver}.tar.gz
 tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
 cd ~/${argon2_ver}
 make -j ${THREAD} && make install
@@ -81,7 +81,7 @@ fi
 cd ~
 libsodium_ver=libsodium-1.0.18
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-wget -4 -q http://file.asuhu.com/so/${libsodium_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${libsodium_ver}.tar.gz
 tar -zxf ${libsodium_ver}.tar.gz && rm -rf ${libsodium_ver}.tar.gz
 cd ~/${libsodium_ver}
 ./configure --disable-dependency-tracking --enable-minimal
@@ -106,7 +106,7 @@ fi
 #libzip https://blog.csdn.net/zhangatle/article/details/90169494
 yum -y remove libzip libzip-devel
 cd ~
-wget --no-check-certificate https://libzip.org/download/libzip-1.2.0.tar.gz
+wget --no-check-certificate https://www.zhangfangzhou.cn/third/libzip-1.2.0.tar.gz
 tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
 cd libzip-1.2.0
 ./configure
@@ -194,7 +194,7 @@ daemonize = yes
 ;;;;;;;;;;;;;;;;;;;;
 
 [www]
-listen = 127.0.0.1:9000
+listen = /dev/shm/php-cgi.sock
 listen.backlog = -1
 listen.allowed_clients = 127.0.0.1
 listen.owner = www
@@ -225,9 +225,7 @@ env[TMP] = /tmp
 env[TMPDIR] = /tmp
 env[TEMP] = /tmp
 EOF
-
-#listen = /dev/shm/php-cgi.sock
-################
+#######################################
 #php.ini优化
 #memory_limit用来限制PHP所占用的内存的
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
@@ -254,18 +252,23 @@ sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
 ################
-
+#set error log
+sed -i 's/;error_log = php_errors.log/error_log = php_errors.log/g' /usr/local/php/etc/php.ini
+sed -i 's/;opcache.error_log=/opcache.error_log= opcache.error.log/g' /usr/local/php/etc/php.ini
+################
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
-wget -t 3 -O  /usr/local/nginx/conf/nginx.conf  http://file.asuhu.com/so/nginx.conf
-    if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
-wget -O /usr/local/nginx/conf/nginx.conf http://arv.asuhu.com/ftp/so/nginx.conf
-    fi
+wget  --no-check-certificate -t 3 -O  /usr/local/nginx/conf/nginx.conf  https://www.zhangfangzhou.cn/third/nginx.conf
+	if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
+		cp ~/sh/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
+	fi
 
 #探针
-wget -t 3 -O /home/wwwroot/web/proble.tar.gz  http://file.asuhu.com/so/proble.tar.gz
+wget  --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/proble.tar.gz
+	if [ ! -e '/home/wwwroot/web/proble.tar.gz' ];then
+		cp ~/sh/conf/proble.tar.gz /home/wwwroot/web/proble.tar.gz
+	fi
 cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
-
 ################
 #PHP_opcache
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
@@ -285,16 +288,15 @@ opcache.fast_shutdown=1
 opcache.consistency_checks=0
 ;opcache.optimization_level=0
 EOF
-################
 #######################################
 cd ~
-#ioncube_loader安装
+#ioncube_loader安装，如果您的PHP应用程序使用了ionCube编码器进行了加密保护，那么您需要安装ionCube Loader才能够正常运行这些加密的PHP代码
 if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20180731 ];then
 #http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
 php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20180731
 ioncube_loader_path=ioncube_loader_lin_7.3_ts.so
 #
-wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+wget  --no-check-certificate -t 3 -O ${php_extensions_path}/${ioncube_loader_path} https://www.zhangfangzhou.cn/third/so/ioncube/${ioncube_loader_path}
     if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
 wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
@@ -307,7 +309,7 @@ EOF
 php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20180731
 ioncube_loader_path=ioncube_loader_lin_7.3.so
 #
-wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+wget --no-check-certificate -t 3 -O ${php_extensions_path}/${ioncube_loader_path} https://www.zhangfangzhou.cn/third/so/ioncube/${ioncube_loader_path}
     if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
 wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
@@ -319,9 +321,7 @@ EOF
 fi
 #######################################
 #Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
-#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  未支持PHP7
-#ZendGuardLoader 仅支持NTS版本的PHP 
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。仅支持NTS版本的PHP，目前不支持PHP7。
 
 #为了避免冲突，snmp使用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF

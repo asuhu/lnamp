@@ -21,23 +21,23 @@ elif [ $Mem -gt 1280 -a $Mem -le 2500 ]; then
 	echo "Memory resources cannot install PHP8"
 	kill -9 $$
 elif [ $Mem -gt 1800 -a $Mem -le 3500 ]; then
-  Mem_level=2G
-  Memory_limit=256
+	  Mem_level=2G
+	  Memory_limit=256
 elif [ $Mem -gt 3500 -a $Mem -le 4500 ]; then
-  Mem_level=4G
-  Memory_limit=320
+	  Mem_level=4G
+	  Memory_limit=320
 elif [ $Mem -gt 4500 -a $Mem -le 8000 ]; then
-  Mem_level=6G
-  Memory_limit=384
+	  Mem_level=6G
+	  Memory_limit=384
 elif [ $Mem -gt 8000 ]; then
-  Mem_level=8G
-  Memory_limit=448
+	  Mem_level=8G
+	  Memory_limit=448
 fi
-
+if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
 sudo yum -y install wget gcc make vim screen epel-release
-sudo yum -y rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
 if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
 sudo yum-config-manager --enable epel
+sudo yum -y rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
 yum install gcc \
 autoconf \
 gcc-c++ \
@@ -66,13 +66,10 @@ openjpeg-devel \
 oniguruma \
 oniguruma-devel -y
 
-sudo yum -y install sqlite-devel #configure: error: Package requirements (sqlite3 >= 3.7.7) were not met:
+sudo yum -y install sqlite-devel                       #configure: error: Package requirements (sqlite3 >= 3.7.7) were not met:
 sudo yum -y install python python-devel        #checking consistency of all components of python development environment... no
-sudo yum -y install CUnit CUnit-devel          #configure: WARNING: No package 'cunit' found
-sudo yum -y install libicu-devel
-sudo yum -y install net-snmp-devel
-
-if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
+sudo yum -y install CUnit CUnit-devel            #configure: WARNING: No package 'cunit' found
+sudo yum -y install libicu-devel net-snmp-devel
 
 yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 #Cancel installation libmcrypt
@@ -87,7 +84,6 @@ cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php82_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php82_ver}.tar.gz
 tar -zxf php-${php82_ver}.tar.gz && rm -rf php-${php82_ver}.tar.gz
 
-
 if ! whereis cmake; then yum -y install cmake;fi
 cmakeversion=`cmake --version | awk '{print $3}' | awk -F. '{print $1}'|head -n 1`
 if [ ${cmakeversion} -gt 2 ]; then
@@ -96,7 +92,7 @@ if [ ${cmakeversion} -gt 2 ]; then
 		#安装cmake3
 		cd ~
 		#wget -c https://github.com/Kitware/CMake/releases/download/v3.24.0/cmake-3.24.0.tar.gz
-		wget -c http://file.asuhu.com/so/cmake-3.24.0.tar.gz
+		wget --no-check-certificate -c https://www.zhangfangzhou.cn/third/cmake-3.24.0.tar.gz
 		tar -xvzf cmake-3.24.0.tar.gz
 		cd cmake-3.24.0
 		./configure --prefix=/usr/local/cmake
@@ -110,7 +106,7 @@ if [ ${cmakeversion} -gt 2 ]; then
 		cd ~
 		sudo yum install nettle-devel gnutls-devel libzstd-devel -y
 		#wget -c https://libzip.org/download/libzip-1.9.2.tar.gz
-		wget http://file.asuhu.com/so/libzip-1.9.2.tar.gz
+		wget --no-check-certificate -c https://www.zhangfangzhou.cn/third/libzip-1.9.2.tar.gz
 		yum remove libzip libzip-devel -y
 		#升级libzip 
 		tar -xvzf libzip-1.9.2.tar.gz && cd libzip-1.9.2/
@@ -123,12 +119,11 @@ if [ ${cmakeversion} -gt 2 ]; then
 		export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/:$PKG_CONFIG_PATH
 fi
 
-
 #PHP7.3 New features
 cd ~
 argon2_ver=argon2-20190702
 if [ ! -e "/usr/lib/libargon2.a" ]; then
-wget -4 -q http://file.asuhu.com/so/${argon2_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${argon2_ver}.tar.gz
 tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
 cd ~/${argon2_ver}
 make -j ${THREAD} && make install
@@ -139,7 +134,7 @@ fi
 cd ~
 libsodium_ver=libsodium-1.0.18
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-wget -4 -q http://file.asuhu.com/so/${libsodium_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${libsodium_ver}.tar.gz
 tar -zxf ${libsodium_ver}.tar.gz && rm -rf ${libsodium_ver}.tar.gz
 cd ~/${libsodium_ver}
 ./configure --disable-dependency-tracking --enable-minimal
@@ -160,9 +155,14 @@ else
 rm -rf  ~/${argon2_ver}
 fi
 
-
+#export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/:$PKG_CONFIG_PATH
 cd ~/php-${php82_ver}
- export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/:$PKG_CONFIG_PATH
+export LIBZIP_CFLAGS="-I/usr/local/lib64/"
+export LIBZIP_LIBS="-L/usr/local/lib64/ -lzip"
+export LIBSODIUM_CFLAGS="-I/usr/local"
+export LIBSODIUM_LIBS="-L/usr/local/lib -lsodium"
+export ARGON2_CFLAGS="-I/usr/lib/"
+export ARGON2_LIBS="-L/usr/lib/x86_64-linux-gnu/ -largon2"
 ./configure \
 --prefix=/usr/local/php \
 --with-config-file-path=/usr/local/php/etc \
@@ -235,7 +235,6 @@ cp /root/php-${php82_ver}/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm           
 chmod +x /etc/init.d/php-fpm                                                       #赋予执行权限
 chkconfig --add php-fpm;chkconfig php-fpm on
 
-
 cd ~
 #php-fpm配置
 cat > /usr/local/php/etc/php-fpm.conf <<"EOF"
@@ -262,7 +261,7 @@ daemonize = yes
 ;;;;;;;;;;;;;;;;;;;;
 
 [www]
-listen = 127.0.0.1:9000
+listen = /dev/shm/php-cgi.sock
 listen.backlog = -1
 listen.allowed_clients = 127.0.0.1
 listen.owner = www
@@ -293,9 +292,7 @@ env[TMP] = /tmp
 env[TMPDIR] = /tmp
 env[TEMP] = /tmp
 EOF
-
-#listen = /dev/shm/php-cgi.sock
-################
+#######################################
 #php.ini优化
 #memory_limit用来限制PHP所占用的内存的
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
@@ -322,18 +319,23 @@ sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
 ################
-
+#set error log
+sed -i 's/;error_log = php_errors.log/error_log = php_errors.log/g' /usr/local/php/etc/php.ini
+sed -i 's/;opcache.error_log=/opcache.error_log= opcache.error.log/g' /usr/local/php/etc/php.ini
+################
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
-wget -t 3 -O  /usr/local/nginx/conf/nginx.conf  http://file.asuhu.com/so/nginx.conf
-    if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
-wget -O /usr/local/nginx/conf/nginx.conf http://arv.asuhu.com/ftp/so/nginx.conf
-    fi
+wget  --no-check-certificate -t 3 -O  /usr/local/nginx/conf/nginx.conf  https://www.zhangfangzhou.cn/third/nginx.conf
+	if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
+		cp ~/sh/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
+	fi
 
 #探针
-wget -t 3 -O /home/wwwroot/web/proble.tar.gz  http://file.asuhu.com/so/proble.tar.gz
+wget  --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/proble.tar.gz
+	if [ ! -e '/home/wwwroot/web/proble.tar.gz' ];then
+		cp ~/sh/conf/proble.tar.gz /home/wwwroot/web/proble.tar.gz
+	fi
 cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
-
 ################
 #PHP_opcache
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
@@ -353,10 +355,9 @@ opcache.fast_shutdown=1
 opcache.consistency_checks=0
 ;opcache.optimization_level=0
 EOF
-################
 #######################################
 cd ~
-#	#PHP8.2.4 ioncube_loader安装
+#	#PHP8.2.4 ioncube_loader安装，如果您的PHP应用程序使用了ionCube编码器进行了加密保护，那么您需要安装ionCube Loader才能够正常运行这些加密的PHP代码
 #	if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20180731 ];then
 #	#http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
 #	php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20180731
@@ -387,8 +388,7 @@ cd ~
 #	fi
 #######################################
 #Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
-#ZendGuardLoader 支持 PHP5.5 和 PHP5.6 未支持PHP7 仅支持NTS版本的PHP
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。仅支持NTS版本的PHP，目前不支持PHP8。
 
 #为了避免冲突，snmp使用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
@@ -400,17 +400,10 @@ EOF
 #source ~/sh/function.sh
 #install_phpredis7
 
-#CentOS7
-#libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
-#/usr/bin/libtool --version   libtool (GNU libtool) 2.4.2 Copyright (C) 2011 Free Software Foundation, Inc.
-#/root/php-7.3.13/libtool --version ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
-
 cd ~
 if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib
 /etc/rc.d/init.d/php-fpm restart
 echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
-rm -rf php-${php82_ver}
-rm -rf libzip-1.9.2.tar.gz && rm -rf libzip-1.9.2
-rm -rf cmake-3.24.0.tar.gz && rm -rf cmake-3.24.0
+rm -rf php-${php82_ver} && rm -rf libzip-1.9.2.tar.gz && rm -rf libzip-1.9.2 && rm -rf cmake-3.24.0.tar.gz && rm -rf cmake-3.24.0

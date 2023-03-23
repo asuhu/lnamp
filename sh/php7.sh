@@ -101,7 +101,7 @@ fi
 #libzip https://blog.csdn.net/zhangatle/article/details/90169494
 yum -y remove libzip libzip-devel
 cd ~
-wget --no-check-certificate https://libzip.org/download/libzip-1.2.0.tar.gz
+wget --no-check-certificate https://www.zhangfangzhou.cn/third/libzip-1.2.0.tar.gz
 tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
 cd libzip-1.2.0
 ./configure
@@ -190,7 +190,7 @@ daemonize = yes
 ;;;;;;;;;;;;;;;;;;;;
 
 [www]
-listen = 127.0.0.1:9000
+listen = /dev/shm/php-cgi.sock
 listen.backlog = -1
 listen.allowed_clients = 127.0.0.1
 listen.owner = www
@@ -221,8 +221,6 @@ env[TMP] = /tmp
 env[TMPDIR] = /tmp
 env[TEMP] = /tmp
 EOF
-
-#listen = /dev/shm/php-cgi.sock
 #######################################
 #php.ini优化
 #memory_limit用来限制PHP所占用的内存的
@@ -249,16 +247,23 @@ sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr
   [ -e /usr/sbin/sendmail ] && sed -i 's@^;sendmail_path.*@sendmail_path = /usr/sbin/sendmail -t -i@' /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
-#######################################
+################
+#set error log
+sed -i 's/;error_log = php_errors.log/error_log = php_errors.log/g' /usr/local/php/etc/php.ini
+sed -i 's/;opcache.error_log=/opcache.error_log= opcache.error.log/g' /usr/local/php/etc/php.ini
+################
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
-wget  --no-check-certificate -t 3 -O /usr/local/nginx/conf/nginx.conf  https://www.zhangfangzhou.cn/third/so/nginx.conf
-    if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
-wget -O /usr/local/nginx/conf/nginx.conf http://arv.asuhu.com/ftp/so/nginx.conf
-    fi
+wget  --no-check-certificate -t 3 -O  /usr/local/nginx/conf/nginx.conf  https://www.zhangfangzhou.cn/third/nginx.conf
+	if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
+		cp ~/sh/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
+	fi
 
 #探针
-wget --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/so/proble.tar.gz
+wget  --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/proble.tar.gz
+	if [ ! -e '/home/wwwroot/web/proble.tar.gz' ];then
+		cp ~/sh/conf/proble.tar.gz /home/wwwroot/web/proble.tar.gz
+	fi
 cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
 #######################################
 #PHP_opcache
@@ -281,7 +286,7 @@ opcache.consistency_checks=0
 EOF
 #######################################
 cd ~
-#ioncube_loader安装，用于解密ioncube encoder加密脚本
+#ioncube_loader安装，如果您的PHP应用程序使用了ionCube编码器进行了加密保护，那么您需要安装ionCube Loader才能够正常运行这些加密的PHP代码
 if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20190902 ];then
 #download http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz 
 php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20190902
@@ -312,9 +317,7 @@ EOF
 fi
 #######################################
 #Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
-#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  未支持PHP7
-#ZendGuardLoader 仅支持NTS版本的PHP 
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。仅支持NTS版本的PHP，目前不支持PHP7。
 #######################################
 #/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
 #为了避免冲突，snmp使用单独的模块--with-snmp=shared

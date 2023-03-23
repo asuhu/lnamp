@@ -408,6 +408,15 @@ make -j ${THREAD} && make install
 echo 'extension=fileinfo.so' > /usr/local/php/etc/php.d/fileinfo.ini
 }
 ####################################################################
+cd php-8.2.4/ext/exif
+ /usr/local/php/bin/phpize
+ ./configure --with-php-config=/usr/local/php/bin/php-config
+
+./configure CFLAGS="-std=c99"  --with-php-config=/usr/local/php/bin/php-config
+make
+make install
+echo 'extension=exif.so' > /usr/local/php/etc/php.d/exif.ini
+####################################################################
 #Imagick is a native php extension to create and modify images using the ImageMagick API.This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.
 install_imagick() {
 yum install ImageMagick ImageMagick-devel -y

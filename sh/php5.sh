@@ -119,7 +119,7 @@ daemonize = yes
 ;;;;;;;;;;;;;;;;;;;;
 
 [www]
-listen = 127.0.0.1:9000
+listen = /dev/shm/php-cgi.sock
 listen.backlog = -1
 listen.allowed_clients = 127.0.0.1
 listen.owner = www
@@ -150,8 +150,7 @@ env[TMP] = /tmp
 env[TMPDIR] = /tmp
 env[TEMP] = /tmp
 EOF
-
-
+#######################################
 #memory_limit用来限制PHP所占用的内存的，具体一点说就是一个PHP工作进程即php-fpm所能够使用的最大内存，默认是128MB
 #php.ini优化
 if [ $Mem -gt 1000 -a $Mem -le 2500 ];then
@@ -177,18 +176,25 @@ sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr
   [ -e /usr/sbin/sendmail ] && sed -i 's@^;sendmail_path.*@sendmail_path = /usr/sbin/sendmail -t -i@' /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
-
+################
+#set error log
+sed -i 's/;error_log = php_errors.log/error_log = php_errors.log/g' /usr/local/php/etc/php.ini
+sed -i 's/;opcache.error_log=/opcache.error_log= opcache.error.log/g' /usr/local/php/etc/php.ini
+################
 #Nginx PHP fastcgi
 mkdir -p /home/{wwwroot,/wwwlogs};mkdir -p /home/wwwroot/web;mkdir -p /home/wwwroot/web/ftp;chown -R www.www /home/wwwroot;
-wget -t 3 -O  /usr/local/nginx/conf/nginx.conf  http://file.asuhu.com/so/nginx.conf
-    if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
-wget -O /usr/local/nginx/conf/nginx.conf http://arv.asuhu.com/ftp/so/nginx.conf
-    fi
+wget  --no-check-certificate -t 3 -O  /usr/local/nginx/conf/nginx.conf  https://www.zhangfangzhou.cn/third/nginx.conf
+	if [ ! -e '/usr/local/nginx/conf/nginx.conf' ];then
+		cp ~/sh/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
+	fi
 
-#php_proble
-wget -t 3 -O /home/wwwroot/web/proble.tar.gz  http://file.asuhu.com/so/proble.tar.gz
+#探针
+wget  --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/proble.tar.gz
+	if [ ! -e '/home/wwwroot/web/proble.tar.gz' ];then
+		cp ~/sh/conf/proble.tar.gz /home/wwwroot/web/proble.tar.gz
+	fi
 cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
-
+#######################################
 #PHPopcache扩展
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
 [opcache]
@@ -206,7 +212,7 @@ EOF
 
 #############################
 cd ~
-#PHP线程安全Thread Safe (TS)和非线程安全Non-Thread Safe (NTS)，ioncube_loader安装
+#PHP线程安全Thread Safe (TS)和非线程安全Non-Thread Safe (NTS)，ioncube_loader安装，如果您的PHP应用程序使用了ionCube编码器进行了加密保护，那么您需要安装ionCube Loader才能够正常运行这些加密的PHP代码
 if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20131226 ];then
 #http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
 php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20131226
@@ -235,7 +241,6 @@ cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 zend_extension=${ioncube_loader_path}
 EOF
 fi
-#############################
 ###########################################################
 #ZendGuardLoader安装  wget http://downloads.zend.com/guard/7.0.0/zend-loader-php5.6-linux-x86_64.tar.gz  http://www.zend.com/en/products/loader/downloads#Linux
 #Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
