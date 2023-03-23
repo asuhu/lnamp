@@ -208,7 +208,7 @@ exit 1
   else
     if [ "$DB_yn" == 'y' ]; then 
         echo 'Please select database:'
-	echo -e "\033[36m 1 Do not install database \033[0m"
+        echo -e "\033[36m 1 Do not install database \033[0m"
         echo -e "\033[31m 2 $mysql6 \033[0m"
         echo -e "\033[31m 3 $mysql7 \033[0m"
         echo -e "\033[31m 4 $mysql7 binary \033[0m"
