@@ -5,7 +5,7 @@ elif [ -d /home/wwwroot/default ];then
 webdir=/home/wwwroot/default
 fi
 #
-if [ `/usr/local/php/bin/php -v|head -n1|awk '{print $2}'|grep '7'` ];then
+if [ `/usr/local/php/bin/php -v|head -n1|awk '{print $2}'|grep '8'` ];then
 pmaversion=`curl -s https://www.phpmyadmin.net/files/ | awk -F\> '/\/files\//{print $3}'|grep -v rc|grep -v '^$'|grep -v alpha1|cut -d'<' -f1 | sort -V | tail -1`
 echo "phpMyAdmin-${pmaversion} Version"
 else
