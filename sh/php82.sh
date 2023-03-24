@@ -100,7 +100,7 @@ if [ ${cmakeversion} -gt 2 ]; then
 		make -j ${THREAD} && make install
 		mv /usr/bin/cmake /usr/bin/cmake.bk
 		cp /usr/local/cmake/bin/cmake /usr/bin/cmake
-		echo export PATH=/usr/local/cmake/bin:$PATH >>/etc/profile 
+		echo 'export PATH=/usr/local/cmake/bin:$PATH' >>/etc/profile 
 		source /etc/profile
 
 		cd ~
