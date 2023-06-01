@@ -48,7 +48,7 @@ next() {
 }
 
 #Display Version
-nginx_openssl=Nginx1.22
+nginx_openssl=Nginx1.24
 apache=Apache2.2.34_prefork_No_Support_HTTP2
 apache_openssl='Apache2.4_latest_event_HTTP2'
 php5apache=PHP5.6_Apache

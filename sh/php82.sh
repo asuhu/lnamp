@@ -79,7 +79,7 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php82_ver=8.2.4
+php82_ver=8.2.6
 cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php82_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php82_ver}.tar.gz
 tar -zxf php-${php82_ver}.tar.gz && rm -rf php-${php82_ver}.tar.gz

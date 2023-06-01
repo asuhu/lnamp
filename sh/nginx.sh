@@ -1,44 +1,44 @@
 #!/bin/bash
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Bit=$(getconf LONG_BIT)
-ngstable=1.22.1
+ngstable=1.24.0
 zlibstable=1.2.13
 pcrestable=8.45
 Google_ip=216.58.200.4
 Within_China=https://www.zhangfangzhou.cn/third/
 
 if ping -c 10 file.asuhu.com >/dev/null;then
-echo "website configuration files check ok"
-else
-echo "website configuration files check error. Please contact 860116511@qq.com"
-kill -9 $$
+	echo "website configuration files check ok"
+	else
+	echo "website configuration files check error. Please contact 860116511@qq.com"
+	kill -9 $$
 fi
 
 if [ ! -e '/usr/bin/wget' ]; then yum -y install wget; fi
 
-#Version selection
+#system version
 if  [ -n "$(grep ' 7\.' /etc/redhat-release)" ] ;then
-CentOS_RHEL_version=7
-elif
-[ -n "$(grep ' 6\.' /etc/redhat-release)" ]; then
-CentOS_RHEL_version=6
+	CentOS_RHEL_version=7
+	elif
+	[ -n "$(grep ' 6\.' /etc/redhat-release)" ]; then
+	CentOS_RHEL_version=6
 fi
 
 yum -y remove httpd httpd* nginx
 yum -y install gcc gcc-c++ make vim screen python git
-
+yum -y install rsync wget gcc screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
 cd ~
 yum -y install zlib-devel
 if ping -c 2 ${Google_ip} >/dev/null;then
-wget -4 -q http://zlib.net/zlib-${zlibstable}.tar.gz
-wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/pcre-${pcrestable}.tar.gz
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1t.tar.gz
-wget -4 -q --no-check-certificate http://nginx.org/download/nginx-${ngstable}.tar.gz
-else
-wget -4 -q --no-check-certificate ${Within_China}/zlib-${zlibstable}.tar.gz
-wget -4 -q --no-check-certificate ${Within_China}/pcre-${pcrestable}.tar.gz
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz ${Within_China}/openssl-1.1.1t.tar.gz
-wget -4 -q --no-check-certificate ${Within_China}/nginx-${ngstable}.tar.gz
+	wget -4 -q http://zlib.net/zlib-${zlibstable}.tar.gz
+	wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/pcre-${pcrestable}.tar.gz
+	wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.openssl.org/source/openssl-1.1.1t.tar.gz
+	wget -4 -q --no-check-certificate http://nginx.org/download/nginx-${ngstable}.tar.gz
+	else
+	wget -4 -q --no-check-certificate ${Within_China}/zlib-${zlibstable}.tar.gz
+	wget -4 -q --no-check-certificate ${Within_China}/pcre-${pcrestable}.tar.gz
+	wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz ${Within_China}/openssl-1.1.1t.tar.gz
+	wget -4 -q --no-check-certificate ${Within_China}/nginx-${ngstable}.tar.gz
 fi
 
 #openssl
@@ -138,7 +138,6 @@ chown www.www -R /usr/local/nginx;
 
 #开始判断CentOS版本
 if [ ${CentOS_RHEL_version} -eq 6 ];then
-#wget -O /etc/init.d/nginx http://file.asuhu.com/so/nginx_centos6
 
 cat > /etc/init.d/nginx << "EOF"
 #!/bin/bash
@@ -281,33 +280,13 @@ chkconfig --add nginx; chkconfig nginx on;
 service iptables start;chkconfig iptables on;
 iptables -I INPUT -p tcp -m multiport --dport 80,443,8080,8081,3306 -j ACCEPT;
 service iptables save;service iptables restart;
-
 ###################
-#最新zlib，未使用
-#if [ $Bit -eq 64 ]; then
-#ln -sf  /usr/local/zlib/lib/libz.so.${zlibstable} /lib64/libz.so.1.2.3
-# elif [ $Bit -eq 32 ];then
-#ln -sf /usr/local/zlib/lib/libz.so.${zlibstable} /lib/libz.so.1.2.3
-#fi
-###################
-#systemctl is-enabled firewalld
-#systemctl is-active firewalld
-#CentOS7禁用firewalld，启用iptables
-#
+#CentOS7使用firewalld
   elif [ ${CentOS_RHEL_version} -eq 7 ];then
-if systemctl status firewalld;then
-systemctl stop firewalld;systemctl disable firewalld;systemctl mask firewalld
-echo "off firewalld";
-else
-systemctl mask firewalld
- fi
-
-yum install iptables-services iptables-devel -y
-systemctl enable iptables
-iptables -F
-iptables -I INPUT -p tcp -m multiport --dport 80,443,8080,8081,3306 -j ACCEPT;
-service iptables save;service iptables restart;
-
+	if systemctl status firewalld;then
+firewall-cmd --zone=public --add-port=80/tcp --add-port=8080/tcp --add-port=443/tcp --add-port=8443/tcp --permanent
+firewall-cmd --zone=public --add-port=3306/tcp --add-port=3306/tcp --permanent
+	fi
 ##################set systemctl nginx.service
 cat > /usr/lib/systemd/system/nginx.service << EOF
 [Unit]
@@ -335,11 +314,8 @@ EOF
 
 chmod +x /usr/lib/systemd/system/nginx.service
 systemctl enable nginx.service
-#systemctl start nginx.service
 fi
 #CentOS 6 7 判断结束
-
-
 
 #Nginx日志轮训，需要配合crontab和logrotate
 #安装crond Cronie (sys-process/cronie) is a fork of vixie-cron done by Fedora. Because of it being a fork it has the same feature set the original vixie-cron provides
