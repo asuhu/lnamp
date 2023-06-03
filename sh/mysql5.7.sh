@@ -105,7 +105,7 @@ max_connections = 6000
 max_connect_errors = 6000
 open_files_limit = 65535
 table_open_cache = 128
-max_allowed_packet = 4M
+max_allowed_packet = 1024M
 binlog_cache_size = 1M
 max_heap_table_size = 8M
 tmp_table_size = 16M
@@ -124,7 +124,7 @@ query_cache_limit = 2M
 ft_min_word_len = 4
 log_bin = mysql-bin
 binlog_format = mixed
-expire_logs_days = 180
+expire_logs_days = 99
 
 log_error = ${mysql_data_dir}/mysql-error.log
 slow_query_log = 1
@@ -132,16 +132,14 @@ long_query_time = 1
 slow_query_log_file = ${mysql_data_dir}/mysql-slow.log
 performance_schema = 0
 explicit_defaults_for_timestamp
-
-#lower_case_table_names = 1
-
+lower_case_table_names = 1
 skip-external-locking
 
 default_storage_engine = InnoDB
 #default-storage-engine = MyISAM
 innodb_file_per_table = 1
 innodb_open_files = 500
-innodb_buffer_pool_size = 64M
+innodb_buffer_pool_size = 256M
 innodb_write_io_threads = 4
 innodb_read_io_threads = 4
 innodb_thread_concurrency = 0
@@ -154,21 +152,12 @@ innodb_max_dirty_pages_pct = 90
 innodb_lock_wait_timeout = 120
 
 bulk_insert_buffer_size = 8M
-myisam_sort_buffer_size = 8M
-myisam_max_sort_file_size = 10G
-
 interactive_timeout = 28800
 wait_timeout = 28800
 
 [mysqldump]
 quick
-max_allowed_packet = 500M
-
-[myisamchk]
-key_buffer_size = 8M
-sort_buffer_size = 8M
-read_buffer = 4M
-write_buffer = 4M
+max_allowed_packet = 1024M
 EOF
 
 #≥ı ºªØMySQL Community Server 5.7
