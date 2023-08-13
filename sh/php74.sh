@@ -59,7 +59,7 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php74_ver=7.4.33
+php74_ver=7.4.32
 cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php74_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php74_ver}.tar.gz
 tar -zxf php-${php74_ver}.tar.gz && rm -rf php-${php74_ver}.tar.gz
@@ -125,13 +125,12 @@ CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
 --with-iconv-dir=/usr/local \
 --enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-exif \
 --enable-sysvsem --enable-inline-optimization --enable-mbregex \
---enable-fileinfo --enable-gd --enable-zip \
 --enable-mbstring --with-password-argon2 --with-sodium=/usr/local \
 --with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-ftp  --enable-intl --with-xsl \
 --with-gettext --enable-soap \
 --with-openssl=/usr/local/openssl --with-curl=/usr/local/curl --with-zlib=/usr/local/zlib \
 --with-snmp=shared --with-gmp \
---disable-debug
+--disable-debug --disable-fileinfo
 
 #--without-libzip
 #--enable-gd-native-ttf configure: #WARNING: unrecognized options: --enable-gd-native-ttf

@@ -285,7 +285,8 @@ service iptables save;service iptables restart;
   elif [ ${CentOS_RHEL_version} -eq 7 ];then
 	if systemctl status firewalld;then
 firewall-cmd --zone=public --add-port=80/tcp --add-port=8080/tcp --add-port=443/tcp --add-port=8443/tcp --permanent
-firewall-cmd --zone=public --add-port=3306/tcp --add-port=3306/tcp --permanent
+firewall-cmd --zone=public --add-port=3306/tcp --add-port=3360/tcp --permanent
+systemctl restart firewalld
 	fi
 ##################set systemctl nginx.service
 cat > /usr/lib/systemd/system/nginx.service << EOF

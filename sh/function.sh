@@ -185,7 +185,7 @@ install_phpopenssl111(){
 cd ~
 yum -y install gcc gcc-c++ make vim screen python wget git zlib zlib-devel
   if [ ! -e '/usr/local/openssl/bin/openssl' ]; then
-wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.zhangfangzhou.cn/third/openssl-1.1.1t.tar.gz
+wget -4 -q --no-check-certificate -O openssl-1.1.1-latest.tar.gz https://www.zhangfangzhou.cn/third/openssl-1.1.1v.tar.gz
 tar -zxf openssl-1.1.1-latest.tar.gz && rm -rf openssl-1.1.1-latest.tar.gz && mv openssl-1.1.1? openssl-1.1.1-latest
 cd ~/openssl-1.1.1-latest
 ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib-dynamic 2>&1 >~/phpopenssl-1.1.1-latest.log
@@ -256,7 +256,8 @@ rm -rf ${phpredisvs}
 #
 install_phpredis7() {
 #http://pecl.php.net/package/redis
-phpredisvs=phpredis-5.2.1
+#http://pecl.php.net/get/redis-5.3.7.tgz
+phpredisvs=phpredis-5.3.7
 cd ~
 if wget -4 --no-check-certificate https://www.zhangfangzhou.cn/third/so/${phpredisvs}.tar.gz
 then
@@ -397,7 +398,7 @@ echo "PHP mongodb module installed successfully! "
 }
 ####################################################################
 install_fileinfo() {
-  src_url=https://www.php.net/distributions/php-7.3.21.tar.gz
+  src_url=https://www.php.net/distributions/php-7.4.33.tar.gz
   src_url=https://www.php.net/distributions/php-5.6.40.tar.gz
     tar xzf php-7.3.21.tar.gz
 cd php-7.3.21/ext/fileinfo
