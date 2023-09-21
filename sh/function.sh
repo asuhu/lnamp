@@ -97,14 +97,14 @@ fi
 
 if [ ! -d /usr/local/zlib ];then
 cd ~
-wget --no-check-certificate -4 http://zlib.net/zlib-1.2.11.tar.gz
-tar -zxvf zlib-1.2.11.tar.gz && rm -rf zlib-1.2.11.tar.gz
-cd zlib-1.2.11
+wget --no-check-certificate -4 http://zlib.net/zlib-1.3.tar.gz
+tar -zxvf zlib-1.3.tar.gz && rm -rf zlib-1.3.tar.gz
+cd zlib-1.3
 ./configure  --prefix=/usr/local/zlib
 make -j ${THREAD} && make install
 echo "/usr/local/zlib/lib" > /etc/ld.so.conf.d/zlib.conf
 ldconfig -v
-rm -rf ~/zlib-1.2.11
+rm -rf ~/zlib-1.3
 else
 echo "Already installed zlib"
 fi

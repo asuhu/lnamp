@@ -2,7 +2,7 @@
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Bit=$(getconf LONG_BIT)
 ngstable=1.24.0
-zlibstable=1.2.13
+zlibstable=1.3
 pcrestable=8.45
 Google_ip=216.58.200.4
 Within_China=https://www.zhangfangzhou.cn/third/

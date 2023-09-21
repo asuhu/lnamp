@@ -1,6 +1,10 @@
 #!/bin/bash
 #CentOS 6 7
-#Generic #https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.24-linux-glibc2.12-x86_64.tar.gz
+#https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.43-linux-glibc2.12-x86_64.tar.gz
+mysql_install_dir=/usr/local/mysql
+mysql_data_dir=/usr/local/mysql/data
+sqlstable=5.7.43
+glibcstable=glibc2.12
 #
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 sqlpass=$(date +%s%N | sha256sum | base64 | head -c 12)
@@ -8,33 +12,27 @@ if [ -z ${sqlpass} ];then
 	sqlpass='R0JZrvdUt&P@WlHs'
 fi
 Mem=$( free -m | awk '/Mem/ {print $2}' )
-#define
-mysql_install_dir=/usr/local/mysql
-mysql_data_dir=/usr/local/mysql/data
-sqlstable=5.7.42
-glibcstable=glibc2.12
-#mysql account
+#Mysql account
     id -u mysql >/dev/null 2>&1
     [ $? -ne 0 ] && useradd -M -s /sbin/nologin mysql
-#folder
+#Folder
 yum -y install gcc gcc-c++ ncurses ncurses-devel cmake curl openssl openssl-devel wget python
 yum -y install libaio
 yum -y install numactl                                 #/usr/local/mysql/bin/mysqld: error while loading shared libraries: libnuma.so.1
 
 if [ ! -e '/usr/bin/wget' ]; then yum -y install wget; fi
-
+#Download
 cd ~
 wget -4 -q https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
-tar -zxf mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
+tar -zxf mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz && rm -rf mysql-${sqlstable}-linux-${glibcstable}-x86_64.tar.gz
 mv  mysql-${sqlstable}-linux-${glibcstable}-x86_64  ${mysql_install_dir}
 
-#初始化
-#创建数据文件夹
+#Initialize folder
 mkdir -p ${mysql_data_dir} && chown -R mysql.mysql ${mysql_install_dir} && chown -R mysql.mysql  ${mysql_data_dir}
 chown -R mysql.mysql ${mysql_install_dir} && chown -R mysql.mysql  ${mysql_data_dir}
 ${mysql_install_dir}/bin/mysqld --initialize-insecure --basedir=${mysql_install_dir} --datadir=${mysql_data_dir} --user=mysql
 
-#mysqld
+#Mysqld
 /bin/cp ${mysql_install_dir}/support-files/mysql.server /etc/init.d/mysqld
 chmod +x /etc/init.d/mysqld
  sed -i "s@^basedir=.*@basedir=${mysql_install_dir}@" /etc/init.d/mysqld
@@ -42,8 +40,7 @@ chmod +x /etc/init.d/mysqld
 /bin/cp ${mysql_install_dir}/bin/mysqldump /usr/bin/mysqldump
 /bin/cp ${mysql_install_dir}/bin/mysql /usr/bin/mysql
 chkconfig --add mysqld && chkconfig mysqld on
-
-
+#my.cnf
 cat > /etc/my.cnf << EOF
 [client]
 port = 3306
@@ -127,7 +124,7 @@ quick
 max_allowed_packet = 1024M
 EOF
 
-#优化相关参数
+#Optimize related parameters
 if [ $Mem -gt 1500 -a $Mem -le 2500 ];then
     sed -i 's@^thread_cache_size.*@thread_cache_size = 16@' /etc/my.cnf
     sed -i 's@^query_cache_size.*@query_cache_size = 16M@' /etc/my.cnf
@@ -153,24 +150,21 @@ elif [ $Mem -gt 3500 ];then
     sed -i 's@^tmp_table_size.*@tmp_table_size = 128M@' /etc/my.cnf
     sed -i 's@^table_open_cache.*@table_open_cache = 1024@' /etc/my.cnf
 fi
-
+#
 /etc/init.d/mysqld start
 if [ ! -e "${mysql_data_dir}/mysql.pid" ]; then
 echo -e "\033[31m MySQL Community Server ${sqlstable}-linux-${glibcstable}-x86_64 Config Error ... \033[0m \n"
 kill -9 $$
 fi
-
 #修改默认为空的密码，添加root@127.0.0.1
 ${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'127.0.0.1' identified by \"${sqlpass}\" with grant option;"
 ${mysql_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'localhost' identified by \"${sqlpass}\" with grant option;"
-
+#
 #下面两行操作会出现[Warning] Using a password on the command line interface can be insecure.
 ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "reset master;"
 ${mysql_install_dir}/bin/mysql -uroot -p${sqlpass} -e "select user,host from mysql.user;"
-
 echo -e "MySQL Community Server ${sqlstable}-linux-${glibcstable}-x86_64 root password  \033[41;36m  $sqlpass  \033[0m";
 #select user,host from mysql.user;
-${mysql_install_dir}/bin/mysql --version
 #添加环境变量
 echo "export PATH=${mysql_install_dir}/bin/:$PATH">>/etc/profile
 source /etc/profile
