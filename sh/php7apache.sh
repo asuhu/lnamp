@@ -5,15 +5,15 @@
 #https://www.php.net/manual/en/zip.installation.php
 #As of PHP 7.3.0, building against the bundled libzip is discouraged, but still possible by adding --without-libzip to the configuration.
 
-THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
-Mem=$( free -m | awk '/Mem/ {print $2}' )
+# Get system information
+THREAD=$(grep 'model name' /proc/cpuinfo | wc -l)
+Mem=$(free -m | awk '/Mem/ {print $2}')
 Bit=$(getconf LONG_BIT)
 
-
-
-if  [ ! -n "$(grep ' 7\.' /etc/redhat-release)" ] ;then
-echo "PHP7 Need CentOS_7"
-kill -9 $$
+# Check CentOS version
+if ! grep -q ' 7\.' /etc/redhat-release; then
+    echo "Requires CentOS 7"
+    exit 1
 fi
 
 if [ $Mem -le 640 ]; then
@@ -38,23 +38,31 @@ elif [ $Mem -gt 8000 ]; then
   Memory_limit=448
 fi
 
-sudo yum -y install wget gcc make vim screen epel-release
-sudo yum -y rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
-if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
+# Check if wget is installed and install if not
+if ! command -v wget > /dev/null; then
+    sudo yum -y install wget
+fi
+
+# Install required packages
+sudo yum -y install gcc make vim screen epel-release
+
+# Check if yum-config-manager is available and install yum-utils if not
+if ! command -v yum-config-manager > /dev/null; then
+    sudo yum -y install yum-utils
+fi
+
+# Enable the EPEL repository
 sudo yum-config-manager --enable epel
-sudo yum -y install libxml2 libxml2-devel libjpeg-devel libpng-devel freetype-devel bzip2 bzip2-devel net-snmp-devel gmp-devel zlib-devel bison gd-devel 
-sudo yum -y install python python-devel        #checking consistency of all components of python development environment... no
-sudo yum -y install CUnit CUnit-devel          #configure: WARNING: No package 'cunit' found
-sudo yum -y install libicu-devel
 
-#yum -y install jansson-devel                  #configure: No package 'jansson' found 和nghttp2冲突
-#yum -y install openldap-devel
-#/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libssl.so.1.0.0
-#/usr/bin/ld: warning: libcrypto.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux/4.8.5/../../../../lib64/libldap.so, may conflict with libcrypto.so.1.0.0
+# Install additional packages
+sudo yum -y install rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
 
-if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
+# Install required development packages
+sudo yum -y install gcc autoconf gcc-c++ libxml2 libxml2-devel openssl openssl-devel bzip2 bzip2-devel libcurl libcurl-devel \
+libjpeg libjpeg-devel libpng libpng-devel freetype freetype-devel gmp gmp-devel readline readline-devel libxslt libxslt-devel \
+systemd-devel openjpeg-devel oniguruma oniguruma-devel sqlite-devel python python-devel CUnit CUnit-devel libicu-devel \
+net-snmp-devel bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 
-yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
 #Cancel installation libmcrypt
 #Source installation openssl111和curl(含zlib)
 source ~/sh/function.sh
@@ -62,65 +70,87 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php73_ver=7.3.33
+php74_ver=7.4.33
 cd ~
-wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php73_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php73_ver}.tar.gz
-tar -zxf php-${php73_ver}.tar.gz && rm -rf php-${php73_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php74_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php74_ver}.tar.gz
+tar -zxf php-${php74_ver}.tar.gz && rm -rf php-${php74_ver}.tar.gz
 
 #PHP7.3 New features
 cd ~
-argon2_ver=argon2-20171227
-if [ ! -e "/usr/lib/libargon2.a" ]; then
-wget -4 -q http://file.asuhu.com/so/${argon2_ver}.tar.gz
-tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
-cd ~/${argon2_ver}
-make -j ${THREAD} && make install
+# Function to download and install argon2 library
+install_argon2() {
+argon2_ver=argon2-20190702
+    if [ ! -f "/usr/lib/libargon2.a" ]; then
+        sudo yum install -y libargon2 libargon2-devel
+        wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${argon2_ver}.tar.gz
+        tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
+        cd ~/${argon2_ver}
+        make -j ${THREAD} && sudo make install
+        [ ! -d /usr/local/lib/pkgconfig ] && sudo mkdir -p /usr/local/lib/pkgconfig
+        sudo cp libargon2.pc /usr/local/lib/pkgconfig/
+    fi
+}
+# Install argon2 library
+cd ~
+install_argon2
 
+# Check argon2 installation
+if [ ! -f "/usr/lib/x86_64-linux-gnu/libargon2.a" ]; then
+    echo "install argon2 error"
+    exit 1
+else
+    sudo rm -rf ~/${argon2_ver}
 fi
 
-cd ~
+# Function to download and install libsodium library
+install_libsodium() {
 libsodium_ver=libsodium-1.0.18
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-wget -4 -q http://file.asuhu.com/so/${libsodium_ver}.tar.gz
+wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${libsodium_ver}.tar.gz
 tar -zxf ${libsodium_ver}.tar.gz && rm -rf ${libsodium_ver}.tar.gz
 cd ~/${libsodium_ver}
 ./configure --disable-dependency-tracking --enable-minimal
 make -j ${THREAD} && make install
 fi
+}
 
-if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-echo "libsodium error"
-kill -9 $$
+
+# Install libsodium library
+cd ~
+install_libsodium
+
+# Check libsodium installation
+if [ ! -f "/usr/local/lib/libsodium.la" ]; then
+    echo "install libsodium error"
+    exit 1
 else
-rm -rf  ~/${libsodium_ver}
+    sudo rm -rf ~/${libsodium_ver}
 fi
-
-if [ ! -e "/usr/lib/libargon2.a" ]; then
-echo "argon2 error"
-kill -9 $$
-else
-rm -rf  ~/${argon2_ver}
-fi
-
 
 #libzip https://blog.csdn.net/zhangatle/article/details/90169494
-yum -y remove libzip libzip-devel
-cd ~
-wget --no-check-certificate https://libzip.org/download/libzip-1.2.0.tar.gz
-tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
-cd libzip-1.2.0
-./configure
-make && make install
-cd ~
-rm -rf ~/libzip-1.2.0
-cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
-#libzip
+#!/bin/bash
+
+install_libzip() {
+  yum -y remove libzip libzip-devel
+  cd ~
+  wget --no-check-certificate https://www.zhangfangzhou.cn/third/libzip-1.2.0.tar.gz
+  tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
+  cd libzip-1.2.0
+  ./configure
+  make && make install
+  cd ~
+  rm -rf ~/libzip-1.2.0
+  cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
+}
+
+install_libzip
 
 #ld.so.conf.d
 [ -z "`grep /usr/local/lib /etc/ld.so.conf.d/*.conf`" ] && echo '/usr/local/lib' > /etc/ld.so.conf.d/local.conf
-ldconfig
+ldconfig -v
 
-cd ~/php-${php73_ver}
+cd ~/php-${php74_ver}
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/:$PKG_CONFIG_PATH
 CFLAGS= CXXFLAGS= ./configure --prefix=/usr/local/php \
 --with-config-file-path=/usr/local/php/etc \
 --with-config-file-scan-dir=/usr/local/php/etc/php.d \
@@ -188,15 +218,21 @@ sed -i 's@^max_execution_time.*@max_execution_time = 60@' /usr/local/php/etc/php
 sed -i 's@^disable_functions.*@disable_functions = passthru,exec,system,chroot,chgrp,chown,shell_exec,proc_open,proc_get_status,ini_alter,ini_restore,dl,openlog,syslog,readlink,symlink,popepassthru,stream_socket_server,fsocket,popen,eval,parse_ini_file,show_source,pclose,multi_exec,chmod,set_time_limit@' /usr/local/php/etc/php.ini
 sed -i "s@^;curl.cainfo.*@curl.cainfo = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
+sed -i "s@^;openssl.cafile.*@openssl.cafile = /usr/local/openssl/cert.pem@" /usr/local/php/etc/php.ini
   [ -e /usr/sbin/sendmail ] && sed -i 's@^;sendmail_path.*@sendmail_path = /usr/sbin/sendmail -t -i@' /usr/local/php/etc/php.ini
 sed -i "s@^;openssl.capath.*@openssl.capath = "/usr/local/openssl/cert.pem"@" /usr/local/php/etc/php.ini
 sed -i 's@^;realpath_cache_size.*@realpath_cache_size = 2M@' /usr/local/php/etc/php.ini
 ################
+#set error log
+sed -i 's/;error_log = php_errors.log/error_log = php_errors.log/g' /usr/local/php/etc/php.ini
+sed -i 's/;opcache.error_log=/opcache.error_log= opcache.error.log/g' /usr/local/php/etc/php.ini
+################
 #探针
-wget -t 3 -O /home/wwwroot/default/proble.tar.gz http://file.asuhu.com/so/proble.tar.gz
-cd /home/wwwroot/default && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
-
-#/usr/local/php/lib/php/extensions/no-debug-zts-20180731/
+wget  --no-check-certificate -t 3 -O /home/wwwroot/web/proble.tar.gz  https://www.zhangfangzhou.cn/third/proble.tar.gz
+	if [ ! -e '/home/wwwroot/web/proble.tar.gz' ];then
+		cp ~/sh/conf/proble.tar.gz /home/wwwroot/web/proble.tar.gz
+	fi
+cd /home/wwwroot/web/ && tar -zxvf proble.tar.gz && rm -rf proble.tar.gz
 ################
 #PHP_opcache
 cat > /usr/local/php/etc/php.d/opcache.ini << EOF
@@ -217,15 +253,14 @@ opcache.consistency_checks=0
 ;opcache.optimization_level=0
 EOF
 ################
-#######################################
 cd ~
-#ioncube_loader安装
-if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20180731 ];then
-#http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz  http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20180731
-ioncube_loader_path=ioncube_loader_lin_7.3_ts.so
+#ioncube_loader安装，如果您的PHP应用程序使用了ionCube编码器进行了加密保护，那么您需要安装ionCube Loader才能够正常运行这些加密的PHP代码
+if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20190902 ];then
+#download http://www.ioncube.com/loaders.php https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz 
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-zts-20190902
+ioncube_loader_path=ioncube_loader_lin_7.4_ts.so
 #
-wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+wget  --no-check-certificate -t 3 -O ${php_extensions_path}/${ioncube_loader_path} https://www.zhangfangzhou.cn/third/so/ioncube/${ioncube_loader_path}
     if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
 wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
@@ -234,11 +269,11 @@ cat > /usr/local/php/etc/php.d/ioncube.ini << EOF
 [ioncube]
 zend_extension=${ioncube_loader_path}
 EOF
-	elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20180731 ]; then
-php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20180731
-ioncube_loader_path=ioncube_loader_lin_7.3.so
+	elif [ -e /usr/local/php/lib/php/extensions/no-debug-non-zts-20190902 ]; then
+php_extensions_path=/usr/local/php/lib/php/extensions/no-debug-non-zts-20190902
+ioncube_loader_path=ioncube_loader_lin_7.4.so
 #
-wget -t 3 -O ${php_extensions_path}/${ioncube_loader_path} http://file.asuhu.com/so/ioncube/${ioncube_loader_path}
+wget --no-check-certificate -t 3 -O ${php_extensions_path}/${ioncube_loader_path} https://www.zhangfangzhou.cn/third/so/ioncube/${ioncube_loader_path}
     if [ ! -e "${php_extensions_path}/${ioncube_loader_path}" ];then
 wget -O "${php_extensions_path}/${ioncube_loader_path}" http://arv.asuhu.com/ftp/so/ioncube/${ioncube_loader_path}
     fi
@@ -250,28 +285,27 @@ EOF
 fi
 #######################################
 #Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。如果环境中没有安装 Zend Guard Loader，则无法运行经 Zend Guard 加密后的 PHP 代码。
-#ZendGuardLoader 支持 PHP5.5 和 PHP5.6  未支持PHP7
-#ZendGuardLoader 仅支持NTS版本的PHP 
-
-#为了避免冲突，snmp使用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。仅支持NTS版本的PHP，目前不支持PHP7。
+#######################################
+#/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
+#为了避免冲突，snmp使用单独的模块--with-snmp=shared
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
 [snmp]
 extension = snmp.so
 EOF
 
-#安装phpredis
+#install phpredis
 #source ~/sh/function.sh
 #install_phpredis7
 
-#CentOS7
-#libtool: warning: remember to run 'libtool --finish /root/php-5.6.31/libs'
+#CentOS7 libtool
+#libtool: warning: remember to run 'libtool --finish /root/php-7.4.32/libs'
 #/usr/bin/libtool --version   libtool (GNU libtool) 2.4.2 Copyright (C) 2011 Free Software Foundation, Inc.
-#/root/php-7.3.13/libtool --version ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
-
+#/root/php-${php74_ver}/libtool --version ltmain.sh (GNU libtool) 1.5.26 (1.1220.2.492 2008/01/30 06:40:56)
+#Clear
 cd ~
 if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib
 echo 'export PATH=/usr/local/php/bin:$PATH'>>/etc/profile && source /etc/profile
 /usr/local/php/bin/php --version
-rm -rf php-${php73_ver}
+rm -rf php-${php74_ver}

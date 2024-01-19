@@ -1,77 +1,74 @@
 #!/bin/bash
-
+#enable epel-release
+#https://www.php.net/supported-versions.php
 THREAD=$(cat /proc/cpuinfo | grep 'model name'| wc -l)
 Mem=$( free -m | awk '/Mem/ {print $2}' )
 Bit=$(getconf LONG_BIT)
 
+# Get system information
+THREAD=$(grep 'model name' /proc/cpuinfo | wc -l)
+Mem=$(free -m | awk '/Mem/ {print $2}')
+Bit=$(getconf LONG_BIT)
 
+# Check CentOS version
+if ! grep -q ' 7\.' /etc/redhat-release; then
+    echo "Requires CentOS 7"
+    exit 1
+fi
 
-if  [ ! -n "$(grep ' 7\.' /etc/redhat-release)" ] ;then
-echo "PHP7 Need CentOS_7"
-kill -9 $$
+# Check memory resources
+if [ $Mem -le 2000 ]; then
+    echo "Insufficient memory resources to install PHP8"
+    exit 1
 fi
 
 if [ $Mem -le 640 ]; then
-	echo "Memory resources cannot install PHP8"
-	kill -9 $$
+  Memory_limit=64
 elif [ $Mem -gt 640 -a $Mem -le 1280 ]; then
-	echo "Memory resources cannot install PHP8"
-	kill -9 $$
+  Mem_level=1G
+  Memory_limit=128
 elif [ $Mem -gt 1280 -a $Mem -le 2500 ]; then
-	echo "Memory resources cannot install PHP8"
-	kill -9 $$
-elif [ $Mem -gt 1800 -a $Mem -le 3500 ]; then
-	  Mem_level=2G
-	  Memory_limit=256
+  Mem_level=2G
+  Memory_limit=192
+elif [ $Mem -gt 2500 -a $Mem -le 3500 ]; then
+  Mem_level=3G
+  Memory_limit=256
 elif [ $Mem -gt 3500 -a $Mem -le 4500 ]; then
-	  Mem_level=4G
-	  Memory_limit=320
+  Mem_level=4G
+  Memory_limit=320
 elif [ $Mem -gt 4500 -a $Mem -le 8000 ]; then
-	  Mem_level=6G
-	  Memory_limit=384
+  Mem_level=6G
+  Memory_limit=384
 elif [ $Mem -gt 8000 ]; then
-	  Mem_level=8G
-	  Memory_limit=448
+  Mem_level=8G
+  Memory_limit=448
 fi
-if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
-sudo yum -y install wget gcc make vim screen epel-release
-if ! which yum-config-manager;then sudo yum -y install yum-utils;fi
+
+# Check if wget is installed and install if not
+if ! command -v wget > /dev/null; then
+    sudo yum -y install wget
+fi
+
+# Install required packages
+sudo yum -y install gcc make vim screen epel-release
+
+# Check if yum-config-manager is available and install yum-utils if not
+if ! command -v yum-config-manager > /dev/null; then
+    sudo yum -y install yum-utils
+fi
+
+# Enable the EPEL repository
 sudo yum-config-manager --enable epel
-sudo yum -y rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
-yum install gcc \
-autoconf \
-gcc-c++ \
-libxml2 \
-libxml2-devel \
-openssl \
-openssl-devel \
-bzip2 \
-bzip2-devel \
-libcurl \
-libcurl-devel \
-libjpeg \
-libjpeg-devel \
-libpng \
-libpng-devel \
-freetype \
-freetype-devel \
-gmp \
-gmp-devel \
-readline \
-readline-devel \
-libxslt \
-libxslt-devel \
-systemd-devel \
-openjpeg-devel \
-oniguruma \
-oniguruma-devel -y
 
-sudo yum -y install sqlite-devel                       #configure: error: Package requirements (sqlite3 >= 3.7.7) were not met:
-sudo yum -y install python python-devel        #checking consistency of all components of python development environment... no
-sudo yum -y install CUnit CUnit-devel            #configure: WARNING: No package 'cunit' found
-sudo yum -y install libicu-devel net-snmp-devel
+# Install additional packages
+sudo yum -y install rsync screen net-tools dnf unzip vim htop iftop htop tcping tcpdump sysstat bash-completion perl
 
-yum -y install bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
+# Install required development packages
+sudo yum -y install gcc autoconf gcc-c++ libxml2 libxml2-devel openssl openssl-devel bzip2 bzip2-devel libcurl libcurl-devel \
+libjpeg libjpeg-devel libpng libpng-devel freetype freetype-devel gmp gmp-devel readline readline-devel libxslt libxslt-devel \
+systemd-devel openjpeg-devel oniguruma oniguruma-devel sqlite-devel python python-devel CUnit CUnit-devel libicu-devel \
+net-snmp-devel bison bison-devel libevent libevent-devel libxslt-devel libidn-devel libcurl-devel readline-devel re2c
+
 #Cancel installation libmcrypt
 #Source installation openssl111和curl(含zlib)
 source ~/sh/function.sh
@@ -79,59 +76,75 @@ install_phpopenssl111
 install_curl
 
 #Download PHP7
-php82_ver=8.2.6
+php82_ver=8.2.14
 cd ~
 wget -4 -q --no-check-certificate https://www.php.net/distributions/php-${php82_ver}.tar.gz   #http://jp2.php.net/distributions/php-${php82_ver}.tar.gz
 tar -zxf php-${php82_ver}.tar.gz && rm -rf php-${php82_ver}.tar.gz
 
-if ! whereis cmake; then yum -y install cmake;fi
-cmakeversion=`cmake --version | awk '{print $3}' | awk -F. '{print $1}'|head -n 1`
-if [ ${cmakeversion} -gt 2 ]; then
-	  echo "ok"
-	else
-		#安装cmake3
-		cd ~
-		#wget -c https://github.com/Kitware/CMake/releases/download/v3.24.0/cmake-3.24.0.tar.gz
-		wget --no-check-certificate -c https://www.zhangfangzhou.cn/third/cmake-3.24.0.tar.gz
-		tar -xvzf cmake-3.24.0.tar.gz
-		cd cmake-3.24.0
-		./configure --prefix=/usr/local/cmake
-		./bootstrap
-		make -j ${THREAD} && make install
-		mv /usr/bin/cmake /usr/bin/cmake.bk
-		cp /usr/local/cmake/bin/cmake /usr/bin/cmake
-		echo 'export PATH=/usr/local/cmake/bin:$PATH' >>/etc/profile 
-		source /etc/profile
-
-		cd ~
-		sudo yum install nettle-devel gnutls-devel libzstd-devel -y
-		#wget -c https://libzip.org/download/libzip-1.9.2.tar.gz
-		wget --no-check-certificate -c https://www.zhangfangzhou.cn/third/libzip-1.9.2.tar.gz
-		yum remove libzip libzip-devel -y
-		#升级libzip 
-		tar -xvzf libzip-1.9.2.tar.gz && cd libzip-1.9.2/
-		mkdir build && cd build
-		cmake ..
-		make -j ${THREAD} && make install
-		whereis libzip
-		echo "/usr/local/lib64" >>/etc/ld.so.conf
-		ldconfig -v | grep libzip
-		export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/:$PKG_CONFIG_PATH
+# Check cmake is installed
+if ! command -v cmake > /dev/null; then
+    sudo yum -y install cmake
 fi
 
+# Get cmake version
+cmakeversion=$(cmake --version | awk '{print $3}' | awk -F. '{print $1}' | head -n 1)
+
+if [ "$cmakeversion" -gt 2 ]; then
+    echo "ok"
+else
+    # Install cmake 3
+    cd ~
+    wget --no-check-certificate -c https://www.zhangfangzhou.cn/third/cmake-3.24.0.tar.gz
+    tar -xvzf cmake-3.24.0.tar.gz
+    cd cmake-3.24.0
+    ./configure --prefix=/usr/local/cmake
+    make -j$THREAD && sudo make install
+    sudo mv /usr/bin/cmake /usr/bin/cmake.bk
+    sudo cp /usr/local/cmake/bin/cmake /usr/bin/cmake
+    echo 'export PATH=/usr/local/cmake/bin:$PATH' >> /etc/profile
+    source /etc/profile
+
+    cd ~
+    sudo yum install nettle-devel gnutls-devel libzstd-devel -y
+    wget --no-check-certificate -c https://www.zhangfangzhou.cn/third/libzip-1.9.2.tar.gz
+    sudo yum remove libzip libzip-devel -y
+    tar -xvzf libzip-1.9.2.tar.gz && cd libzip-1.9.2/
+    mkdir build && cd build
+    cmake ..
+    make -j$THREAD && sudo make install
+    sudo sh -c 'echo "/usr/local/lib64" >> /etc/ld.so.conf'
+    sudo ldconfig -v | grep libzip
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/:$PKG_CONFIG_PATH
+fi
 #PHP7.3 New features
 cd ~
+# Function to download and install argon2 library
+install_argon2() {
 argon2_ver=argon2-20190702
-if [ ! -e "/usr/lib/libargon2.a" ]; then
-wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${argon2_ver}.tar.gz
-tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
-cd ~/${argon2_ver}
-make -j ${THREAD} && make install
-    [ ! -d /usr/local/lib/pkgconfig ] && mkdir -p /usr/local/lib/pkgconfig
-    /bin/cp libargon2.pc /usr/local/lib/pkgconfig/
+    if [ ! -f "/usr/lib/libargon2.a" ]; then
+        sudo yum install -y libargon2 libargon2-devel
+        wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${argon2_ver}.tar.gz
+        tar -zxf ${argon2_ver}.tar.gz && rm -rf ${argon2_ver}.tar.gz
+        cd ~/${argon2_ver}
+        make -j ${THREAD} && sudo make install
+        [ ! -d /usr/local/lib/pkgconfig ] && sudo mkdir -p /usr/local/lib/pkgconfig
+        sudo cp libargon2.pc /usr/local/lib/pkgconfig/
+    fi
+}
+# Install argon2 library
+cd ~
+install_argon2
+
+# Check argon2 installation
+if [ ! -f "/usr/lib/x86_64-linux-gnu/libargon2.a" ]; then
+    echo "install argon2 error"
+    exit 1
+else
+    sudo rm -rf ~/${argon2_ver}
 fi
 
-cd ~
+# Function to download and install libsodium library
+install_libsodium() {
 libsodium_ver=libsodium-1.0.18
 if [ ! -e "/usr/local/lib/libsodium.la" ]; then
 wget -4 -q --no-check-certificate https://www.zhangfangzhou.cn/third/so/${libsodium_ver}.tar.gz
@@ -140,20 +153,38 @@ cd ~/${libsodium_ver}
 ./configure --disable-dependency-tracking --enable-minimal
 make -j ${THREAD} && make install
 fi
+}
 
-if [ ! -e "/usr/local/lib/libsodium.la" ]; then
-echo "libsodium error"
-kill -9 $$
+
+# Install libsodium library
+cd ~
+install_libsodium
+
+# Check libsodium installation
+if [ ! -f "/usr/local/lib/libsodium.la" ]; then
+    echo "install libsodium error"
+    exit 1
 else
-rm -rf  ~/${libsodium_ver}
+    sudo rm -rf ~/${libsodium_ver}
 fi
 
-if [ ! -e "/usr/lib/x86_64-linux-gnu/libargon2.a" ]; then
-echo "argon2 error"
-kill -9 $$
-else
-rm -rf  ~/${argon2_ver}
-fi
+#libzip https://blog.csdn.net/zhangatle/article/details/90169494
+#!/bin/bash
+
+install_libzip() {
+  yum -y remove libzip libzip-devel
+  cd ~
+  wget --no-check-certificate https://www.zhangfangzhou.cn/third/libzip-1.2.0.tar.gz
+  tar -zxf libzip-1.2.0.tar.gz && rm -rf libzip-1.2.0.tar.gz 
+  cd libzip-1.2.0
+  ./configure
+  make && make install
+  cd ~
+  rm -rf ~/libzip-1.2.0
+  cp /usr/local/lib/libzip/include/zipconf.h /usr/local/include/zipconf.h
+}
+
+install_libzip
 
 #export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/:$PKG_CONFIG_PATH
 cd ~/php-${php82_ver}
@@ -355,7 +386,7 @@ opcache.fast_shutdown=1
 opcache.consistency_checks=0
 ;opcache.optimization_level=0
 EOF
-#######################################
+################
 cd ~
 #	#PHP8.2.4 ioncube_loader安装，如果您的PHP应用程序使用了ionCube编码器进行了加密保护，那么您需要安装ionCube Loader才能够正常运行这些加密的PHP代码
 #	if [ -e /usr/local/php/lib/php/extensions/no-debug-zts-20180731 ];then
@@ -388,18 +419,20 @@ cd ~
 #	fi
 #######################################
 #Zend Guard 是 Zend 官方出品的一款 PHP 源码加密产品解决方案，能有效地防止程序未经许可的使用和逆向工程。
-#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。仅支持NTS版本的PHP，目前不支持PHP8。
-
-#为了避免冲突，snmp使用单独的模块/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
+#Zend Guard Loader 则是针对使用 Zend Guard 加密后的 PHP 代码的运行环境。仅支持NTS版本的PHP，目前不支持PHP7。
+#######################################
+#/usr/bin/ld: warning: libssl.so.10, needed by /usr/lib/gcc/x86_64-redhat-linux.8.5/../../../../lib64/libnetsnmp.so, may conflict with libssl.so.1.0.0
+#为了避免冲突，snmp使用单独的模块--with-snmp=shared
 cat > /usr/local/php/etc/php.d/snmp.ini << EOF
 [snmp]
 extension = snmp.so
 EOF
 
-#安装phpredis
+#install phpredis
 #source ~/sh/function.sh
 #install_phpredis7
 
+#Clear
 cd ~
 if ! which libtool;then yum -y install libtool;fi
 libtool --finish /usr/local/php/lib

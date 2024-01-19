@@ -11,7 +11,7 @@ fi
 
 apstable=$(curl -s https://httpd.apache.org/download.cgi#apache24 | grep "latest available version"| awk '{print $5}')
 if [ -z $apstable ];then
-apstable=2.4.46
+apstable=2.4.58
 else
 echo "Apache2.4 version check ok"
 fi
@@ -19,7 +19,6 @@ fi
 yum -y install gcc make epel-release  pcre-devel zlib-devel lynx perl
 
 if [ ! -e '/usr/bin/wget' ];then yum -y install wget;fi
-
 #install openssl nghttp2
 source ~/sh/function.sh
 install_phpopenssl111
@@ -32,8 +31,8 @@ tar -zxf httpd-$apstable.tar.gz;rm -rf httpd-${apstable}.tar.gz;
 cd ~
 yum -y install expat-devel
 #http://archive.apache.org/dist/apr/apr-1.7.0.tar.gz http://archive.apache.org/dist/apr/apr-util-1.6.1.tar.gz
-aprversion=apr-1.7.0
-aprutilversion=apr-util-1.6.1
+aprversion=apr-1.7.4
+aprutilversion=apr-util-1.6.3
 wget http://archive.apache.org/dist/apr/${aprversion}.tar.gz
 wget http://archive.apache.org/dist/apr/${aprutilversion}.tar.gz
 tar zxf ${aprversion}.tar.gz && cp -fr ./${aprversion} ./httpd-$apstable/srclib/apr
