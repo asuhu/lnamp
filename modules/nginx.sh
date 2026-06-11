@@ -47,6 +47,13 @@ _nginx_source() {
       "http://tengine.taobao.org/download/${tarball}" \
       "https://github.com/alibaba/tengine/archive/refs/tags/${tver}.tar.gz" \
       || die "下载失败 (download failed): ${tarball}"
+  elif [ "$flavor" = freenginx ]; then
+    local fver="${ver#freenginx-}"        # freenginx-1.30.1 -> 1.30.1
+    srcdir="freenginx-${fver}"; tarball="${srcdir}.tar.gz"
+    log "下载 freenginx ${fver}"
+    fetch "$tarball" \
+      "https://freenginx.org/download/${tarball}" \
+      || die "下载失败 (download failed): ${tarball}"
   else
     srcdir="nginx-${ver}"; tarball="${srcdir}.tar.gz"
     fetch "$tarball" "http://nginx.org/download/nginx-${ver}.tar.gz" \
@@ -96,17 +103,21 @@ _nginx_source() {
   log_ok "${flavor} ${ver} (source) 安装完成"
 }
 
-# 原仓库对 nginx 源码的优化（伪装成 IIS、加大 autoindex 文件名长度），带 -f 保护以兼容各版本/flavor
+# 原仓库对 nginx 源码的优化（伪装成 IIS、加大 autoindex 文件名长度）。
+# 采用“按内容匹配”而非固定行号/空白，确保对 nginx / tengine / freenginx 各 flavor 都能可靠生效。
 _nginx_apply_optimizations() {
   local h="$1"
+  # 1) src/core/nginx.h: 版本签名与 NGINX_VAR 伪装为 IIS
   if [ -f "$h/src/core/nginx.h" ]; then
-    sed -i 's@^#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "Microsoft-IIS/10.0/" NGINX_VERSION@g' "$h/src/core/nginx.h"
-    sed -i 's@^#define NGINX_VAR          "NGINX"@#define NGINX_VAR          "Microsoft-IIS"@g' "$h/src/core/nginx.h"
+    sed -i 's@"nginx/" NGINX_VERSION@"Microsoft-IIS/10.0/" NGINX_VERSION@' "$h/src/core/nginx.h"
+    sed -i 's@^#define NGINX_VAR[[:space:]].*"NGINX"@#define NGINX_VAR          "Microsoft-IIS"@' "$h/src/core/nginx.h"
   fi
+  # 2) 错误页脚 <center>nginx</center> -> Microsoft-IIS
   [ -f "$h/src/http/ngx_http_special_response.c" ] && \
-    sed -i '30,40s@nginx@Microsoft-IIS@g' "$h/src/http/ngx_http_special_response.c"
+    sed -i 's@>nginx<@>Microsoft-IIS<@g' "$h/src/http/ngx_http_special_response.c"
+  # 3) server_tokens off 时的 Server 头: "Server: nginx" -> Microsoft-IIS
   [ -f "$h/src/http/ngx_http_header_filter_module.c" ] && \
-    sed -i '45,50s@nginx@Microsoft-IIS@g' "$h/src/http/ngx_http_header_filter_module.c"
+    sed -i 's@"Server: nginx"@"Server: Microsoft-IIS"@g' "$h/src/http/ngx_http_header_filter_module.c"
   if [ -f "$h/src/http/modules/ngx_http_autoindex_module.c" ]; then
     sed -i 's/^#define NGX_HTTP_AUTOINDEX_PREALLOCATE  50/#define NGX_HTTP_AUTOINDEX_PREALLOCATE  150/' "$h/src/http/modules/ngx_http_autoindex_module.c"
     sed -i 's/^#define NGX_HTTP_AUTOINDEX_NAME_LEN     50/#define NGX_HTTP_AUTOINDEX_NAME_LEN     150/' "$h/src/http/modules/ngx_http_autoindex_module.c"

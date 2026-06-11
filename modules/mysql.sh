@@ -106,16 +106,23 @@ _mysql_binary() {
   fi
   ensure_mysql_user
   cd ~ || die "cd ~"
-  local pkg="mysql-${ver}-linux-${glibc}-x86_64"
-  fetch "${pkg}.${ext}" "https://cdn.mysql.com/Downloads/MySQL-${ver%.*}/${pkg}.${ext}" \
-    || die "下载失败 (download failed): ${pkg}.${ext}"
-  # MySQL 8.x 为 .tar.xz，5.7 为 .tar.gz
+  # 依次尝试多个 glibc 变体（清单指定的优先），兼容 8.x(glibc2.17) 与 9.x(glibc2.28)
+  local base="https://cdn.mysql.com/Downloads/MySQL-${ver%.*}" g cand pkg=""
+  for g in "$glibc" glibc2.28 glibc2.17 glibc2.12; do
+    [ -z "$g" ] && continue
+    cand="mysql-${ver}-linux-${g}-x86_64"
+    if fetch "${cand}.${ext}" "${base}/${cand}.${ext}"; then pkg="$cand"; break; fi
+  done
+  [ -n "$pkg" ] || die "下载失败 (download failed): mysql-${ver} 各 glibc 变体均不可用"
+  # MySQL 8.x/9.x 为 .tar.xz，5.7 为 .tar.gz
   case "$ext" in
     tar.xz) tar -Jxf "${pkg}.${ext}" ;;
     *)      tar -zxf "${pkg}.${ext}" ;;
   esac
+  # 解压目录名以实际包名为准（动态探测，避免 glibc 变体导致目录名不一致）
+  local d; d=$(tar -tf "${pkg}.${ext}" 2>/dev/null | head -1 | cut -d/ -f1); [ -n "$d" ] || d="$pkg"
   mkdir -p "${PREFIX_MYSQL%/*}"   # 确保父目录(如 /data)存在，否则 mv 会失败
-  rm -rf "${PREFIX_MYSQL}"; mv "${pkg}" "${PREFIX_MYSQL}"
+  rm -rf "${PREFIX_MYSQL}"; mv "$d" "${PREFIX_MYSQL}"
 
   _mysql_init_db "$ver"
   _mysql_register_service

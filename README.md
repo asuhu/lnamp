@@ -61,9 +61,9 @@ conf/                 # 原仓库的配置模板与 init 脚本（沿用）
 | Nginx/Tengine | nginx 1.30.2 / 1.26.2 / 1.24.0 ; tengine-3.1.0 | `source` · `pkg`（tengine 仅 `source`，并开启 `--with-http_upstream_check_module`）|
 | Apache | 2.4.67 | `source`(event+HTTP2) · `pkg` |
 | PHP（已取消 PHP5） | 8.5.6 / 8.4.22 / 8.3.31 / 8.2.14 / 7.4.33 | `fpm`(配合 Nginx，监听 Unix socket) · `apache`(mod_php 模块)。fileinfo 默认启用；ImageMagick(imagick) 可选 |
-| MySQL  | 8.4.9(LTS) / 8.0.46 / 5.7.44 | `source`(cmake，仅 5.x) · `binary`(官方二进制) · `pkg`(仓库)。数据存放 `/data/mysql` |
+| MySQL  | 9.7.0(LTS) / 8.4.9(LTS) / 8.0.46 / 5.7.44 | `source`(cmake，仅 5.x) · `binary`(官方二进制) · `pkg`(仓库)。数据存放 `/data/mysql` |
 | MariaDB | 11.8.6(LTS) | `binary`(官方 linux-systemd 包) · `pkg`(官方仓库/发行版)。**与 MySQL 二选一**，数据存放 `/data/mariadb` |
-| Redis  | 7.4.9 / 6.2.22 | `source`(编译到 /usr/local/redis) · `pkg`。安装后自动生成随机密码 |
+| Redis  | 8.8.0 / 7.4.9 / 6.2.22 | `source`(编译到 /usr/local/redis) · `pkg`。安装后自动生成随机密码 |
 | phpredis（独立组件）| 6.3.0 / 5.3.7 | `source`(用已装 PHP 的 phpize 编译)。需先/同时装 PHP；`--phpredis [版本]` |
 | phpMyAdmin（可选工具）| 5.2.3 | 装到 `/home/wwwroot/web/phpMyAdmin`；`--phpmyadmin` |
 | Adminer（可选工具，轻量单文件）| 5.4.2 | 装到 `/home/wwwroot/web/adminer`；`--adminer` |
@@ -140,7 +140,7 @@ PHP_VERSIONS=(
 
 - MySQL 8.x（8.0/8.4）：官方二进制包为 `.tar.xz`，脚本会自动用 `xz` 解包；因 8.x 源码编译需 C++17 工具链（CentOS/RHEL 7 默认 gcc 过旧），故 8.x 仅提供 `binary` 与 `pkg` 形式，5.x 仍可 `source` 编译。
 - PHP 8.3/8.4/8.5 与 8.2 走同一套 PHP8 编译流程（源码编译，约需 ≥2000MB 内存）；新增版本只是清单里多了几行，无需改动模块。
-- 默认 PHP 版本为 **8.3.31**（`PHP_DEFAULT`）；MySQL 默认仍为 5.7.44。phpredis 已独立为单独组件（不再随 PHP 自动安装），用 `--phpredis [版本]` 或交互菜单单独选择；版本在 `versions.conf` 的 `PHPREDIS_VERSIONS` 声明（PHP8→6.3.0、PHP7.3→5.3.7）。
+- 默认 PHP 版本为 **8.3.31**（`PHP_DEFAULT`）；MySQL 默认为 8.0.46(binary)。phpredis 已独立为单独组件（不再随 PHP 自动安装），用 `--phpredis [版本]` 或交互菜单单独选择；版本在 `versions.conf` 的 `PHPREDIS_VERSIONS` 声明（PHP8→6.3.0、PHP7.3→5.3.7）。
 
 - Nginx 源码编译会保留原仓库的源码优化：将版本号伪装为 `Microsoft-IIS`、把 autoindex 文件名长度由 50 提到 150、复制 man 手册页。Tengine（nginx 增强发行版）与 nginx 同构，按需求开启 `--with-http_upstream_check_module`（上游健康检查）。
 - Tengine 在「Web 服务器」组件下以 `tengine-3.1.0` 形式出现，与 nginx 互斥（同一 `/usr/local/nginx`）。命令行：`--nginx tengine-3.1.0`。
@@ -172,4 +172,10 @@ PHP_VERSIONS=(
 - 新增 Adminer 可选安装（轻量级单文件 DB 工具，phpMyAdmin 的轻量替代）：交互装 PHP 后会在 phpMyAdmin 之后再问「是否安装 Adminer?」；非交互用 `--adminer`/`--no-adminer`。下载 Adminer 5.4.2 单文件(GitHub release + adminer.org 官方 + 镜像兜底)，放到 `${WWWROOT}/web/adminer/index.php`，访问 http://<域名或IP>/adminer/，用数据库账号登录。版本可在 versions.conf 的 ADMINER_VERSION 调整。
 - 扩展加载修复（重要）：编译出来的共享扩展(redis/imagick/snmp 及 Zend 扩展 opcache)现在统一通过 `php.d/*.ini` 用**绝对路径**启用(`php-config --extension-dir`)，opcache 用 `zend_extension`、snmp/redis/imagick 用 `extension`；并在装好扩展后自动 `reload_php_runtime`（重启 php-fpm / 重载 apache），解决「.so 已生成但 phpinfo 看不到」的问题（根因：php-fpm 在加扩展前已启动，未重新读取 ini）。
 - disable_functions 修正：从默认禁用名单移除 `set_time_limit`（Adminer/phpMyAdmin 等正常工具会调用它，禁用会导致 `Call to undefined function set_time_limit()` 致命错误）；其余高危函数(passthru/exec/system/shell_exec/proc_open/eval 等)仍保留禁用。
+- 新增 OpenJDK + Tomcat：交互菜单末尾可选装 OpenJDK（输入 11 或 17，Eclipse Temurin 二进制），自动设置 `JAVA_HOME`/`JRE_HOME`/`CLASSPATH`/`PATH`(写 /etc/profile.d/lnamp-java.sh，并软链 java/javac)；随后可选装 **Tomcat 10.1.55**(systemd 管理、端口 8080、CATALINA_HOME=/usr/local/tomcat、以 tomcat 用户运行)，Tomcat 最后安装且依赖 Java（CLI `--tomcat` 未配 `--java` 时自动选 OpenJDK 17）。CLI：`--java <11|17>`、`--tomcat`；版本/前缀在 versions.conf 的 `TOMCAT_VERSION`/`PREFIX_JAVA`/`PREFIX_TOMCAT`。
+- 新增 freenginx 分支：NGINX_VERSIONS 增加 `freenginx-1.30.1`(stable, flavor=freenginx)，从 https://freenginx.org/download/ 下载，源码编译且与 nginx 用相同的 OpenSSL/zlib/PCRE 依赖；同样应用 IIS 伪装。并把 IIS 伪装改为“按内容匹配 + 容忍空白”(不再依赖固定行号/空格)，对 nginx/tengine/freenginx 各版本都能可靠生效(NGINX_VER→Microsoft-IIS/10.0/、NGINX_VAR→Microsoft-IIS、错误页脚与 Server 头一并伪装)。
+- 新增 Redis 8.8.0：REDIS_VERSIONS 增加 `8.8.0`(仅 source；distro 包仓库给的是旧 6/7.x，故不提供 pkg 形式)，源码从 download.redis.io + GitHub tag(github.com/redis/redis) 兜底下载，复用现有 `make && make install` 流程。注：Redis 8 源码核心编译需较新的 GCC(建议 Rocky/Alma/RHEL8+、Ubuntu22/24；CentOS7 自带 GCC 过旧可能编译失败)。
+- 数据库选择改为统一列表：交互菜单把 MySQL 各版本与 MariaDB 11.8.6 列在同一张表里(标注 MySQL/MariaDB 与默认项)，输入序号二选一(或 0/回车不装)，再选安装形式；天然保证二者互斥。命令行仍用 `--mysql`/`--mariadb`。
+- 新增 MySQL 9.7.0 LTS：MYSQL_VERSIONS 增加 `9.7.0`(binary,pkg；glibc2.28，.tar.xz)，从 cdn.mysql.com/Downloads/MySQL-9.7/ 下载；my.cnf 走 MySQL8+ 规则(无 query_cache)。同时把二进制下载改为多 glibc 变体回退(清单值优先→glibc2.28→2.17→2.12)并动态探测解压目录，兼容 8.x(glibc2.17) 与 9.x(glibc2.28)。注：MySQL 9.x 需 glibc≥2.28(Rocky/Alma/RHEL8+、Ubuntu22/24)，CentOS7 请用 8.4/8.0。
+- 新增 tests/smoke.sh 全功能冒烟测试(64 项断言，用桩隔离网络/编译/系统调用)：覆盖静态检查、清单×形式校验、所有 CLI flag、辅助函数(meta_get/fetch镜像兜底/php_enable_ext/write_my_cnf 版本门控/IIS伪装)、每个安装器的下载 URL 与产物(nginx三flavor/apache/mysql9.7多glibc回退/mariadb/redis8.8/phpredis/phpMyAdmin安全初始化/Adminer/OpenJDK/Tomcat)、vhost、run_installs 编排顺序、互斥与 Tomcat-needs-Java 守卫、交互菜单。运行: `bash tests/run_all.sh`(共 110 项)。另含 tests/smoke2.sh 深度验证：install_X 按 mode 分发(source/binary/pkg)、生成配置内容(nginx.conf 默认站点+socket+server_tokens off+include vhost；my.cnf datadir/innodb；php.ini 无 set_time_limit/fix_pathinfo=0/expose_php Off；php-fpm www.conf socket+owner)、detect_os(CentOS7/Rocky9/Ubuntu22)、_dep_name 跨发行版映射、fetch 兜底、parse_pick、gen_password、vhost apache、redis.conf。
 本重构在保持原有安装逻辑（configure 参数、init/systemd 配置、镜像源等）的前提下，把「版本 × 形式」从一堆分散脚本收敛为一份可声明、可校验、可扩展的清单。

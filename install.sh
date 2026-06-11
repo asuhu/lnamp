@@ -22,7 +22,7 @@ export SCRIPT_DIR
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/versions.conf"
 source "${SCRIPT_DIR}/lib/common.sh"
-for m in deps nginx apache php mysql mariadb redis vhost phpmyadmin adminer; do source "${SCRIPT_DIR}/modules/${m}.sh"; done
+for m in deps nginx apache php mysql mariadb redis vhost phpmyadmin adminer java; do source "${SCRIPT_DIR}/modules/${m}.sh"; done
 
 # 选择结果 (空 = 不安装该组件)
 SEL_NGINX="" ; SEL_APACHE="" ; SEL_PHP="" ; SEL_MYSQL="" ; SEL_MARIADB="" ; SEL_REDIS="" ; SEL_PHPREDIS=""
@@ -31,6 +31,8 @@ PHP_IMAGICK=""  # yes|no（是否为 PHP 安装 ImageMagick/imagick 扩展）
 IMAGEMAGICK_SOURCE=""  # yes|no（imagick 链接的 ImageMagick 是否从源码编译最新版）
 INSTALL_PMA=""  # yes|no（是否安装 phpMyAdmin 到默认站点）
 INSTALL_ADMINER=""  # yes|no（是否安装 Adminer 轻量级数据库工具）
+SEL_JAVA=""  # 11|17（OpenJDK 版本，空=不装）
+INSTALL_TOMCAT=""  # yes|no（是否安装 Tomcat 10）
 ASSUME_YES=0
 
 usage() {
@@ -57,6 +59,8 @@ LNAMP 安装器 (重构版)
   --no-phpmyadmin       明确不安装 phpMyAdmin (非交互场景)
   --adminer             安装 Adminer (轻量级单文件 DB 工具) 到 ${WWWROOT:-/home/wwwroot}/web/adminer
   --no-adminer          明确不安装 Adminer (非交互场景)
+  --java <11|17>        安装 OpenJDK(Temurin) 并设置 JAVA_HOME/PATH
+  --tomcat              安装 Tomcat 10（依赖 Java；未选 --java 时自动用 OpenJDK 17）
   --list                列出所有可选版本与形式后退出
   -y, --yes             跳过交互确认
   -h, --help            显示本帮助
@@ -85,7 +89,7 @@ print_list() {
   echo "phpredis:"; list_versions PHPREDIS
   hr
   echo "默认 (defaults): nginx=${NGINX_DEFAULT}:${NGINX_DEFAULT_MODE}  apache=${APACHE_DEFAULT}:${APACHE_DEFAULT_MODE}  php=${PHP_DEFAULT}:${PHP_DEFAULT_MODE}  mysql=${MYSQL_DEFAULT}:${MYSQL_DEFAULT_MODE}  mariadb=${MARIADB_DEFAULT}:${MARIADB_DEFAULT_MODE}  redis=${REDIS_DEFAULT}:${REDIS_DEFAULT_MODE}"
-  echo "注: MySQL 与 MariaDB 互斥；Nginx 列表中的 tengine-* 为 Tengine；安装 PHP 会自动带 phpredis 扩展。"
+  echo "注: MySQL 与 MariaDB 互斥；Nginx 列表中的 tengine-* 为 Tengine；phpredis 为独立组件(--phpredis)。"
 }
 
 # ----- 参数解析 -------------------------------------------------------------
@@ -109,6 +113,11 @@ parse_args() {
       --no-phpmyadmin) INSTALL_PMA=no; shift ;;
       --adminer)       INSTALL_ADMINER=yes; shift ;;
       --no-adminer)    INSTALL_ADMINER=no; shift ;;
+      --java)
+        case "$2" in 11|17) SEL_JAVA="$2" ;; *) die "--java 取值须为 11 或 17" ;; esac
+        shift 2 ;;
+      --tomcat)        INSTALL_TOMCAT=yes; shift ;;
+      --no-tomcat)     INSTALL_TOMCAT=no; shift ;;
       --list)   print_list; exit 0 ;;
       -y|--yes) ASSUME_YES=1; shift ;;
       -h|--help) usage; exit 0 ;;
@@ -188,6 +197,53 @@ _menu_apache_mpm() {
   fi
 }
 
+# 数据库统一选择：把 MySQL 与 MariaDB 各版本列在同一张表里，二选一(或不装)。
+menu_database() {
+  echo; hr; echo -e "$(_c '1;36' '选择数据库 (Database)? MySQL 与 MariaDB 互斥，二选一')"
+  local types=() vers=() i=1 line v modes
+  echo "  可选版本 (select one):"
+  for line in "${MYSQL_VERSIONS[@]}"; do
+    v="${line%%|*}"; modes="$(echo "$line" | cut -d'|' -f2)"
+    printf "    %2d) %-10s  %-8s [形式 modes: %s]%s\n" "$i" "$v" "MySQL" "$modes" \
+      "$([ "$v" = "$MYSQL_DEFAULT" ] && echo '  <MySQL默认>')"
+    types+=("MYSQL"); vers+=("$v"); i=$((i+1))
+  done
+  for line in "${MARIADB_VERSIONS[@]}"; do
+    v="${line%%|*}"; modes="$(echo "$line" | cut -d'|' -f2)"
+    printf "    %2d) %-10s  %-8s [形式 modes: %s]%s\n" "$i" "$v" "MariaDB" "$modes" \
+      "$([ "$v" = "$MARIADB_DEFAULT" ] && echo '  <MariaDB默认>')"
+    types+=("MARIADB"); vers+=("$v"); i=$((i+1))
+  done
+  echo "     0) 不安装数据库 (skip)"
+  read -rp "  输入序号 (number, 回车=不安装): " n
+  { [ -z "$n" ] || [ "$n" = 0 ]; } && { echo "  跳过数据库 (skipped)"; return 0; }
+  local idx=$((n-1))
+  { [ "$idx" -ge 0 ] && [ "$idx" -lt "${#vers[@]}" ]; } || die "数据库: 无效序号 ${n}"
+  local comp="${types[$idx]}" ver="${vers[$idx]}" label
+  [ "$comp" = MYSQL ] && label=MySQL || label=MariaDB
+
+  # 选择安装形式
+  modes="$(manifest_modes "$comp" "$ver")"
+  local mode defm_var defm
+  defm_var="${comp}_DEFAULT_MODE"; defm="${!defm_var}"
+  if [ "$(echo "$modes" | tr ',' '\n' | wc -l)" -gt 1 ]; then
+    echo "  请选择安装形式 (select mode): ${modes}"
+    local marr=() j; IFS=',' read -ra marr <<< "$modes"
+    for j in "${!marr[@]}"; do
+      printf "    %d) %s%s\n" "$((j+1))" "${marr[$j]}" \
+        "$([ "${marr[$j]}" = "$defm" ] && echo '  <默认>')"
+    done
+    read -rp "  输入序号 (number, 回车=默认 ${defm}): " mn
+    if [ -z "$mn" ]; then mode="$defm"; else mode="${marr[$((mn-1))]}"; fi
+  else
+    mode="$modes"
+  fi
+
+  validate_choice "$comp" "$ver" "$mode"
+  printf -v "SEL_${comp}" '%s' "${ver}:${mode}"
+  log_ok "${label} 选择: ${ver} (${mode})"
+}
+
 interactive_menu() {
   clear 2>/dev/null
   hr
@@ -224,15 +280,21 @@ interactive_menu() {
     case "$_adm" in y|Y|yes|YES) INSTALL_ADMINER=yes ;; *) INSTALL_ADMINER=no ;; esac
     log_ok "Adminer: $([ "$INSTALL_ADMINER" = yes ] && echo 安装 || echo 不安装)"
   fi
-  menu_component MYSQL  "MySQL (DB)"
-  # MariaDB 与 MySQL 互斥：仅当未选 MySQL 时才询问 MariaDB
-  if [ -z "$SEL_MYSQL" ]; then
-    menu_component MARIADB "MariaDB (DB, 与 MySQL 二选一)"
-  fi
+  menu_database
   menu_component REDIS  "Redis (缓存)"
   # phpredis：需要 PHP（本次选了 PHP，或系统已装 PHP）才询问
   if [ -n "$SEL_PHP" ] || [ -x "${PREFIX_PHP}/bin/phpize" ]; then
     menu_component PHPREDIS "phpredis (PHP 的 Redis 扩展)"
+  fi
+  # Java(OpenJDK) 与 Tomcat
+  local _jv _tc
+  read -rp "是否安装 OpenJDK? 输入版本 11 / 17，回车=不装: " _jv
+  case "$_jv" in 11) SEL_JAVA=11 ;; 17) SEL_JAVA=17 ;; *) SEL_JAVA="" ;; esac
+  [ -n "$SEL_JAVA" ] && log_ok "OpenJDK: 安装 ${SEL_JAVA}" || log_ok "OpenJDK: 不安装"
+  if [ -n "$SEL_JAVA" ]; then
+    read -rp "是否安装 Tomcat ${TOMCAT_VERSION}? [y/N]: " _tc
+    case "$_tc" in y|Y|yes|YES) INSTALL_TOMCAT=yes ;; *) INSTALL_TOMCAT=no ;; esac
+    log_ok "Tomcat: $([ "$INSTALL_TOMCAT" = yes ] && echo 安装 || echo 不安装)"
   fi
 }
 
@@ -259,6 +321,12 @@ confirm_summary() {
   if [ -n "$SEL_MYSQL" ] && [ -n "$SEL_MARIADB" ]; then
     die "MySQL 与 MariaDB 不能同时安装 (choose only one database)。请只选其一。"
   fi
+  # Tomcat 需要 Java：未选 Java 且系统无 java 时，自动选 OpenJDK 17
+  if [ "${INSTALL_TOMCAT}" = yes ] && [ -z "$SEL_JAVA" ] \
+     && [ ! -x "${PREFIX_JAVA}/bin/java" ] && ! command -v java >/dev/null 2>&1; then
+    SEL_JAVA=17
+    log_warn "Tomcat 需要 Java，未选择 OpenJDK，已自动选 OpenJDK 17"
+  fi
   hr; echo "安装计划 (Install plan):"
   echo "  Nginx : ${SEL_NGINX:-不安装(skip)}"
   echo "  Apache: ${SEL_APACHE:-不安装(skip)}${SEL_APACHE:+${APACHE_MPM:+  (MPM=${APACHE_MPM})}}"
@@ -269,8 +337,10 @@ confirm_summary() {
   echo "  phpredis: ${SEL_PHPREDIS:-不安装(skip)}"
   echo "  phpMyAdmin: $([ "${INSTALL_PMA}" = yes ] && echo "安装 -> ${WWWROOT}/web/phpMyAdmin" || echo "不安装(skip)")"
   echo "  Adminer: $([ "${INSTALL_ADMINER}" = yes ] && echo "安装 -> ${WWWROOT}/web/adminer" || echo "不安装(skip)")"
+  echo "  OpenJDK: ${SEL_JAVA:-不安装(skip)}"
+  echo "  Tomcat: $([ "${INSTALL_TOMCAT}" = yes ] && echo "安装 ${TOMCAT_VERSION}" || echo "不安装(skip)")"
   hr
-  if [ -z "${SEL_NGINX}${SEL_APACHE}${SEL_PHP}${SEL_MYSQL}${SEL_MARIADB}${SEL_REDIS}${SEL_PHPREDIS}" ]; then
+  if [ -z "${SEL_NGINX}${SEL_APACHE}${SEL_PHP}${SEL_MYSQL}${SEL_MARIADB}${SEL_REDIS}${SEL_PHPREDIS}${SEL_JAVA}${INSTALL_PMA}${INSTALL_ADMINER}${INSTALL_TOMCAT}" ]; then
     die "未选择任何组件 (nothing selected)"
   fi
   if [ "$ASSUME_YES" -ne 1 ]; then
@@ -293,6 +363,9 @@ run_installs() {
   if [ -n "$SEL_PHPREDIS" ]; then install_phpredis_pick "${SEL_PHPREDIS%%:*}" 2>&1 | tee "logs/phpredis_${ts}.log"; fi
   if [ "${INSTALL_PMA}" = yes ]; then install_phpmyadmin 2>&1 | tee "logs/phpmyadmin_${ts}.log"; fi
   if [ "${INSTALL_ADMINER}" = yes ]; then install_adminer 2>&1 | tee "logs/adminer_${ts}.log"; fi
+  if [ -n "$SEL_JAVA" ]; then install_java "$SEL_JAVA" 2>&1 | tee "logs/java_${ts}.log"; fi
+  # Tomcat 最后安装（依赖 Java）
+  if [ "${INSTALL_TOMCAT}" = yes ]; then install_tomcat 2>&1 | tee "logs/tomcat_${ts}.log"; fi
   hr; log_ok "全部任务完成 (all done)。日志见 logs/ 目录。"
   log "已编译安装的程序已加入系统 PATH，可直接运行，例如: nginx -V / php -v / mysql --version / redis-cli -v"
   log "（当前终端通过 /usr/local/bin 软链立即可用；新开终端会自动加载 /etc/profile.d/lnamp-*.sh）"
