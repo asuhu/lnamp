@@ -14,7 +14,7 @@
 | Apache | **2.4.67** | `source`(event+HTTP2，MPM 可选 prefork/worker/event) · `pkg` |
 | PHP | 8.5.6 / 8.4.22 / **8.3.31** / 8.2.14 / 7.4.33 | `fpm`(Nginx，Unix socket) · `apache`(mod_php)。fileinfo 默认启用；imagick 可选 |
 | MySQL | 9.7.0(LTS) / 8.4.9(LTS) / **8.0.46** / 5.7.44 | `source`(仅 5.x) · `binary` · `pkg`。数据在 `/data/mysql` |
-| MariaDB | **11.8.6**(LTS) | `binary` · `pkg`。**与 MySQL 二选一**，数据在 `/data/mariadb` |
+| MariaDB | **11.8.8**(LTS·2025) / 11.4.8(LTS·2024) / 10.11.14(LTS) | `binary`(archive.mariadb.org) · `pkg`(官方仓库)。**与 MySQL 二选一**，数据在 `/data/mariadb` |
 | Redis | 8.8.0 / **7.4.9** / 6.2.22 | `source` · `pkg`。自动随机密码，systemd 管理 |
 | phpredis（独立组件）| **6.3.0** / 5.3.7 | `source`(用已装 PHP 的 phpize)。`--phpredis [版本]` |
 | ImageMagick / imagick | IM 7.1.2-25 ; imagick 3.7.0(PHP<8.4) / 3.8.1(≥8.4) | 可选扩展，发行版包或源码编译 IM |
@@ -131,7 +131,7 @@ tests/            run_all.sh + smoke.sh(64) + smoke2.sh(46)
 
 **数据库**
 - 数据统一在 `/data`；my.cnf 完整调优并随版本自适应（MySQL 8/9 去 query_cache、用 `binlog_expire_logs_seconds`；5.7/MariaDB 保留 query cache）。
-- MySQL 9.7.0 LTS（glibc2.28，多变体回退）、8.4.9 LTS、8.0.46(默认)、5.7.44；MariaDB 11.8.6；交互为统一二选一列表。
+- MySQL 9.7.0 LTS / 8.4.9 LTS / 8.0.46(默认) / 5.7.44；MariaDB 按 LTS 分支分类：11.8.8(当前LTS) / 11.4.8(上一LTS) / 10.11.14，二进制改用永久归档 archive.mariadb.org（downloads.mariadb.com 已失效跳转）；交互为统一二选一列表。
 
 **Redis / phpredis**
 - Redis 独立组件（8.8.0/7.4.9/6.2.22），systemd、随机密码、maxmemory=内存/8。
@@ -148,15 +148,3 @@ tests/            run_all.sh + smoke.sh(64) + smoke2.sh(46)
 
 **基础设施**
 - 跨发行版包名映射、firewalld/ufw 抽象、systemd 服务、`log_run` 全量构建日志、OpenSSL 3.x lib64 适配、自动 PATH 注册。
-
----
-
-## 7. 测试
-
-```bash
-bash tests/run_all.sh     # 110 项，全部用桩隔离网络/编译/系统调用
-```
-- `tests/smoke.sh`（64）：静态检查、清单×形式校验、CLI flag、辅助函数、各安装器下载 URL 与产物、vhost、编排顺序、守卫、菜单。
-- `tests/smoke2.sh`（46）：模式分发(source/binary/pkg)、生成配置内容(nginx.conf/my.cnf/php.ini/www.conf)、detect_os(CentOS7/Rocky9/Ubuntu22)、依赖映射、fetch 兜底、parse_pick、gen_password、vhost apache、redis.conf。
-
-改动后跑一遍，绿了再发布。

@@ -34,8 +34,8 @@ ck "mysql binary -> _mysql_binary"   "disp 'install_mysql 8.0.46 binary' | grep 
 ck "mysql pkg -> _mysql_pkg"         "disp 'install_mysql 8.0.46 pkg' | grep -q MP"
 ck "redis source -> _redis_source"   "disp 'install_redis 7.4.9 source' | grep -q RS"
 ck "redis pkg -> _redis_pkg"         "disp 'install_redis 7.4.9 pkg' | grep -q RP"
-ck "mariadb binary -> _mariadb_binary" "disp 'install_mariadb 11.8.6 binary' | grep -q DB"
-ck "mariadb pkg -> _mariadb_pkg"     "disp 'install_mariadb 11.8.6 pkg' | grep -q DP"
+ck "mariadb binary -> _mariadb_binary" "disp 'install_mariadb 11.8.8 binary' | grep -q DB"
+ck "mariadb pkg -> _mariadb_pkg"     "disp 'install_mariadb 11.8.8 pkg' | grep -q DP"
 ck "php fpm -> _php_setup_fpm"       "disp 'install_php 8.3.31 fpm' | grep -q FPM"
 ck "php apache -> mod_php"           "disp 'install_php 8.3.31 apache' | grep -q MODPHP"
 

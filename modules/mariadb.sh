@@ -51,9 +51,13 @@ _mariadb_binary() {
   ensure_mysql_user
   cd ~ || die "cd ~"
 
+  # 下载地址分类（generic 二进制 tarball，安装到 /data/mariadb）：
+  #   archive.mariadb.org —— 官方永久归档，保留全部历史版本，路径稳定，作首选
+  #   (downloads.mariadb.com / legacy-downloads.mariadb.com 现 302 跳转到下载页，
+  #    直链已失效，wget 会抓到 HTML，故不再使用；
+  #    dlm.mariadb.com 的 *-debs.tar / *-rpms.tar 是带动态 ID 的仓库包，不适合脚本直链)
   local pkg="mariadb-${ver}-linux-systemd-x86_64"
   fetch "${pkg}.tar.gz" \
-    "https://downloads.mariadb.com/MariaDB/mariadb-${ver}/bintar-linux-systemd-x86_64/${pkg}.tar.gz" \
     "https://archive.mariadb.org/mariadb-${ver}/bintar-linux-systemd-x86_64/${pkg}.tar.gz" \
     || die "下载失败 (download failed): ${pkg}.tar.gz"
   tar -zxf "${pkg}.tar.gz"

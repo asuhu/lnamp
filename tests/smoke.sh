@@ -58,7 +58,7 @@ ckcli "--nginx tengine-3.1.0"      "--nginx tengine-3.1.0"      'test "$SEL_NGIN
 ckcli "--apache + mpm"             "--apache 2.4.67:source --apache-mpm event" 'test "$SEL_APACHE" = 2.4.67:source -a "$APACHE_MPM" = event'
 ckcli "--php fpm"                  "--php 8.3.31:fpm"           'test "$SEL_PHP" = 8.3.31:fpm'
 ckcli "--mysql 9.7.0"             "--mysql 9.7.0"              'test "$SEL_MYSQL" = 9.7.0:binary'
-ckcli "--mariadb"                 "--mariadb 11.8.6"           'test "$SEL_MARIADB" = 11.8.6:binary'
+ckcli "--mariadb"                 "--mariadb 11.8.8"           'test "$SEL_MARIADB" = 11.8.8:binary'
 ckcli "--redis 8.8.0"            "--redis 8.8.0"             'test "$SEL_REDIS" = 8.8.0:source'
 ckcli "--phpredis"               "--phpredis 6.3.0"           'test "$SEL_PHPREDIS" = 6.3.0:source'
 ckcli "--php-imagick"            "--php 8.3.31 --php-imagick"  'test "$PHP_IMAGICK" = yes'
@@ -95,7 +95,7 @@ mycnf(){ echo "( load; SB=\$(mktemp -d); tune_my_cnf(){ :;}; MEM_MB=4096; THREAD
 ck "my.cnf: MySQL8 无 query_cache"   "$(mycnf mysql 8.0.46 '!')"
 ck "my.cnf: MySQL5.7 有 query_cache" "$(mycnf mysql 5.7.44 '')"
 ck "my.cnf: MySQL9 无 query_cache"   "$(mycnf mysql 9.7.0 '!')"
-ck "my.cnf: MariaDB 有 query_cache"  "$(mycnf mariadb 11.8.6 '')"
+ck "my.cnf: MariaDB 有 query_cache"  "$(mycnf mariadb 11.8.8 '')"
 # IIS 伪装(各 flavor 同一函数)
 ck "IIS 伪装四处生效" "(
   source ./modules/nginx.sh; SB=\$(mktemp -d); h=\$SB/s; mkdir -p \$h/src/core \$h/src/http \$h/src/http/modules
@@ -141,8 +141,8 @@ t_mariadb(){ ( load; _t_common; SB=$(mktemp -d); export HOME=$SB PREFIX_MARIADB=
   _mysql_init_db(){ :;}; _mysql_register_service(){ :;}; _mysql_common_post(){ :;}; mv(){ :;}
   tar(){ echo d/; return 0;}
   fetch(){ echo "$2" >> $URLS; : > "$1"; return 0; }
-  install_mariadb 11.8.6 binary >/dev/null 2>&1
-  grep -qi 'mariadb' $URLS && grep -q '11.8.6' $URLS ); }
+  install_mariadb 11.8.8 binary >/dev/null 2>&1
+  grep -qi 'mariadb' $URLS && grep -q '11.8.8' $URLS ); }
 t_redis(){ ( load; _t_common; SB=$(mktemp -d); export HOME=$SB PREFIX_REDIS=$SB/redis; URLS=$SB/u; : > $URLS
   gen_password(){ echo P;}; _redis_write_conf(){ :;}; _redis_service(){ :;}; tar(){ :;}
   make(){ mkdir -p $PREFIX_REDIS/bin; : > $PREFIX_REDIS/bin/redis-server; }
@@ -205,7 +205,7 @@ ck "nginx 下载 tengine-3.1.0 (taobao)"    "t_nginx tengine-3.1.0 'tengine.taob
 ck "nginx 下载 freenginx-1.30.1"          "t_nginx freenginx-1.30.1 'freenginx.org/download/freenginx-1.30.1'"
 ck "apache 下载 2.4.67 (+apr)"            "t_apache"
 ck "mysql binary 9.7.0 (glibc2.28)"       "t_mysql"
-ck "mariadb binary 11.8.6"                "t_mariadb"
+ck "mariadb binary 11.8.8"                "t_mariadb"
 ck "redis 8.8.0 (download.redis.io)"      "t_redis"
 ck "phpredis 6.3.0 (github tag)"          "t_phpredis"
 ck "phpMyAdmin 5.2.3 安装+安全初始化"      "t_pma"
@@ -226,7 +226,7 @@ ck "run_installs 顺序(tomcat 最后)" "(
   echo \"\$out\" | tr '\n' ' ' | grep -q 'install_nginx.*install_php.*install_redis.*install_phpmyadmin.*install_adminer.*install_java.*install_tomcat' \$URLS
 )"
 ck "守卫: MySQL+MariaDB 互斥报错" "(
-  load; SEL_MYSQL=8.0.46:binary; SEL_MARIADB=11.8.6:binary
+  load; SEL_MYSQL=8.0.46:binary; SEL_MARIADB=11.8.8:binary
   ! ( confirm_summary <<< y ) >/dev/null 2>&1
 )"
 ck "守卫: Tomcat 无 Java 自动补 17" "(
@@ -247,7 +247,7 @@ ck "menu_database 选 MySQL8.0.46(默认形式)" "(
 )"
 ck "menu_database 选 MariaDB" "(
   load; hr(){ :;}; SEL_MYSQL=; SEL_MARIADB=
-  menu_database >/dev/null 2>&1 <<< \$'5\n\n'; test \"\$SEL_MARIADB\" = 11.8.6:binary
+  menu_database >/dev/null 2>&1 <<< \$'5\n\n'; test \"\$SEL_MARIADB\" = 11.8.8:binary
 )"
 ck "menu_database 选 0 不装" "(
   load; hr(){ :;}; SEL_MYSQL=x; SEL_MARIADB=
