@@ -31,10 +31,17 @@ _nginx_source() {
   ensure_www_user
   cd ~ || die "cd ~"
 
-  # 依赖：zlib / pcre / openssl —— 均从镜像下载并本地编译进 nginx
+  # 依赖：zlib / pcre / openssl —— 优先本地缓存/自己的镜像(fetch 内置)，官方上游兜底，本地编译进 nginx
   log "下载依赖 (deps): zlib-${zlib} ${pcre} openssl-${openssl}"
-  dl "zlib-${zlib}.tar.gz"
-  dl "${pcre}.tar.gz"
+  # zlib：官方当前版在 zlib.net 根目录，历史版在 fossils/ 子目录，两者都给以兼容旧/新版本
+  fetch "zlib-${zlib}.tar.gz" \
+    "https://zlib.net/zlib-${zlib}.tar.gz" \
+    "https://zlib.net/fossils/zlib-${zlib}.tar.gz" \
+    || die "下载失败 (download failed): zlib-${zlib}.tar.gz"
+  # pcre2：官方 GitHub Release
+  fetch "${pcre}.tar.gz" \
+    "https://github.com/PCRE2Project/pcre2/releases/download/${pcre}/${pcre}.tar.gz" \
+    || die "下载失败 (download failed): ${pcre}.tar.gz"
   dl_openssl "$openssl" "openssl-src.tar.gz"
 
   # 按 flavor 决定源码包与目录名

@@ -12,12 +12,12 @@
 |------|----------------------|--------------------|
 | Nginx 系 | nginx 1.30.2 / **1.26.2** / 1.24.0 · tengine-3.1.0 · freenginx-1.30.1 | `source`(编译，含自编 OpenSSL/zlib/PCRE) · `pkg`(仅 nginx flavor)。tengine/freenginx 仅 `source` |
 | Apache | **2.4.67** | `source`(event+HTTP2，MPM 可选 prefork/worker/event) · `pkg` |
-| PHP | 8.5.6 / 8.4.22 / **8.3.31** / 8.2.14 / 7.4.33 | `fpm`(Nginx，Unix socket) · `apache`(mod_php)。fileinfo 默认启用；imagick 可选 |
+| PHP | 8.5.6 / 8.4.22 / **8.3.31** / 8.2.14 / 7.4.33 / 5.6.40 | `fpm`(Nginx，Unix socket) · `apache`(mod_php)。fileinfo 默认启用；imagick 可选。**5.6.40 为 EOL 遗留版**：自动改用独立 OpenSSL 1.0.2、启用 mcrypt、跳过 sodium/argon2/intl、现代 GCC 追加 `-fcommon`，最佳环境 CentOS/RHEL 7 |
 | MySQL | 9.7.0(LTS) / 8.4.9(LTS) / **8.0.46** / 5.7.44 | `source`(仅 5.x) · `binary` · `pkg`。数据在 `/data/mysql` |
 | MariaDB | **11.8.8**(LTS·2025) / 11.4.8(LTS·2024) / 10.11.14(LTS) | `binary`(archive.mariadb.org) · `pkg`(官方仓库)。**与 MySQL 二选一**，数据在 `/data/mariadb` |
 | Redis | 8.8.0 / **7.4.9** / 6.2.22 | `source` · `pkg`。自动随机密码，systemd 管理 |
-| phpredis（独立组件）| **6.3.0** / 5.3.7 | `source`(用已装 PHP 的 phpize)。`--phpredis [版本]` |
-| ImageMagick / imagick | IM 7.1.2-25 ; imagick 3.7.0(PHP<8.4) / 3.8.1(≥8.4) | 可选扩展，发行版包或源码编译 IM |
+| phpredis（独立组件）| **6.3.0**(PHP8) / 5.3.7(PHP7) / 4.3.0(PHP5.6) | `source`(用已装 PHP 的 phpize)。`--phpredis [版本]`；未指定版本时按已装 PHP 主版本自动匹配 |
+| ImageMagick / imagick | IM 7.1.2-25 ; imagick 3.4.4(PHP5.6) / 3.7.0(PHP7–8.3) / 3.8.1(≥8.4) | 可选扩展，发行版包或源码编译 IM |
 | phpMyAdmin | 5.2.3 | 可选，装到 `/home/wwwroot/web/phpMyAdmin`；`--phpmyadmin` |
 | Adminer | 5.4.2 | 可选，轻量单文件，装到 `/home/wwwroot/web/adminer`；`--adminer` |
 | OpenJDK / Tomcat | OpenJDK 11 或 17(Temurin) ; Tomcat 10.1.55 | 可选；`--java <11\|17>`、`--tomcat` |
@@ -44,6 +44,9 @@ sudo bash install.sh --apache 2.4.67:source --apache-mpm event --php 8.2.14:apac
 
 # freenginx + 源码 ImageMagick + Adminer
 sudo bash install.sh --nginx freenginx-1.30.1 --php 8.4.22:fpm --imagemagick-source --adminer -y
+
+# 遗留应用专用：PHP 5.6.40（自动独立 OpenSSL 1.0.2 + mcrypt），推荐在 CentOS 7 上运行
+sudo bash install.sh --nginx 1.26.2:source --php 5.6.40:fpm --phpredis 4.3.0 --mysql 5.7.44:binary -y
 
 # OpenJDK 17 + Tomcat（Tomcat 最后装，依赖 Java）
 sudo bash install.sh --java 17 --tomcat -y
@@ -76,6 +79,7 @@ bash tests/run_all.sh       # 跑全部冒烟测试（110 项）
 | Java / Tomcat / ImageMagick | `/usr/local/{java,tomcat,imagemagick}` |
 | 网站根 / 默认站点 / 日志 | `/home/wwwroot` ; `/home/wwwroot/web`(默认站点，支持 PHP) ; `/home/wwwlogs` |
 | php-fpm socket | `/run/php/php-fpm.sock` |
+| PHP 错误日志 | `<php前缀>/var/log/php_errors.log`（脚本 warning/fatal，属 www 可写）；FPM 主日志 `php-fpm.log`；opcache `opcache_error.log` |
 | 数据库 root 随机密码 | `/root/.mysql_root_password` / `.mariadb_root_password`（600） |
 | Redis 随机密码 | `/root/.redis_password` |
 | 安装日志 | `logs/`（每组件一份 + build 总日志） |
@@ -104,19 +108,21 @@ tests/            run_all.sh + smoke.sh(64) + smoke2.sh(46)
 
 - **运行环境**：CentOS/RHEL 7、Rocky/Alma/RHEL 8·9、Ubuntu 22/24，需 root 且有 systemd。自动区分 yum/dnf/apt 与 firewalld/ufw。
 - **内存**：源码编译耗时且吃内存，PHP8 / MySQL5.7 源码默认要求 ≥2000MB（清单 `min_mem` 可调）。
-- **下载**：先官方源（`wget --tries=3 --timeout=30`），失败自动转镜像（`versions.conf` 的 `MIRROR_PRIMARY`→`MIRROR_FALLBACK`，按文件名兜底）。
+- **下载**：优先级为 **本地缓存 → 自己的镜像 → 官方源**。① 本地缓存（`$LNAMP_CACHE` 或 `<安装器目录>/packages/`，命中即不联网）；② 自己的镜像（`versions.conf` 的 `MIRROR_PRIMARY`→`MIRROR_FALLBACK`，按文件名自动尝试镜像根目录与 `so/` 子目录）；③ 官方源仅作最终兜底。所有下载统一经 `fetch`，全部安装包的完整地址清单见 `packages/README.txt`。
+- **离线/预下载安装**：把安装包（**文件名须与官方一致**，如 `php-5.6.40.tar.gz`、`openssl-1.0.2u.tar.gz`、`nginx-1.26.2.tar.gz`）放进 `packages/` 目录（与 `install.sh` 同级），或用 `LNAMP_CACHE=/path sudo bash install.sh ...` 指定任意目录，`fetch` 会优先取用、完全跳过网络。
 - **MySQL 9.x**：需 glibc ≥ 2.28（Rocky/Alma/RHEL 8+、Ubuntu 22/24）；CentOS 7 请用 8.4 / 8.0。二进制下载会按 glibc 变体（2.28→2.17→2.12）自动回退。
 - **Redis 8.x**：源码核心编译需较新 GCC（同上）；CentOS 7 建议用 7.4.9。
 - **MySQL/MariaDB 互斥**：交互的统一数据库菜单里二选一；命令行同时给会被拦截。`pkg` 形式的版本由发行版仓库决定，可能与所选版本号不同（会提示）。
 - **密码**：MySQL/MariaDB/Redis 安装后自动生成随机密码并保存到 `/root/.*`（600），无需手动 `mysql_secure_installation`。
 - **php-fpm** 走 Unix socket（非 9000 端口）；网站需通过 `http://IP/xxx.php`（经 php-fpm）才能看到扩展，改 php.d 后需 `systemctl restart php-fpm`。
+- **PHP 错误日志**：默认 `log_errors=On`、`error_log` 指向绝对路径 `<php前缀>/var/log/php_errors.log`（由 www 可写），FPM 池同时设 `catch_workers_output=yes` 与 `php_admin_value[error_log]`，确保脚本 warning/fatal 一定落盘。生产环境 `display_errors=Off`；开发调试若想页面直出报错，可临时改 `display_errors=On` 后重启 php-fpm。
 
 ---
 
 ## 6. 主要特性与变更（按主题）
 
 **Web / Nginx**
-- 三 flavor：nginx（官方）、tengine（开 `--with-http_upstream_check_module`）、freenginx-1.30.1，均源码编译，自编 OpenSSL 3.0.20 / zlib 1.3.1 / PCRE2-10.42。
+- 三 flavor：nginx（官方）、tengine（开 `--with-http_upstream_check_module`）、freenginx-1.30.1，均源码编译，自编 OpenSSL 3.0.20 / zlib 1.3.2 / PCRE2-10.42。
 - 源码优化：伪装 `Server` 为 `Microsoft-IIS`（按内容匹配、容忍空白，对三 flavor 都可靠生效）、autoindex 文件名长度 50→150。
 - 优化 nginx.conf：worker/epoll/gzip/fastcgi/open_file_cache/server_tokens off；默认站点服务 `/home/wwwroot/web` 且支持 PHP；`include vhost/*.conf`；附 conf/lnamp 的 security/static 片段。
 
@@ -125,7 +131,7 @@ tests/            run_all.sh + smoke.sh(64) + smoke2.sh(46)
 
 **PHP**
 - 完整 configure（curl/openssl/mysqli/pdo/gd/zip/intl/soap/bcmath/opcache/sodium/argon2/ldap/snmp 等），链接自编 OpenSSL 3.0.20 / libsodium / argon2。
-- php.ini 调优（内存分级、时区、`cgi.fix_pathinfo=0`、`expose_php Off` 等）；`disable_functions` 禁高危函数但**保留 `set_time_limit`**（否则 Adminer/phpMyAdmin 报错）。
+- php.ini 调优（内存分级、时区、`cgi.fix_pathinfo=0`、`expose_php Off` 等）；`disable_functions` 仅禁真实存在的高危函数（exec/system/shell_exec/proc_open/pcntl_exec 等），**保留 `chmod`、`set_time_limit` 等框架常用函数**（禁用 `chmod` 会导致 Twig/Composer/WordPress 报 `Call to undefined function ...chmod()`；禁用 `set_time_limit` 会让 Adminer/phpMyAdmin 报错）。
 - php-fpm 用 Unix socket（`listen.owner/group=www`、systemd `RuntimeDirectory=php`）。
 - **扩展加载**：opcache(zend_extension)/snmp/redis/imagick 统一用绝对路径写 `php.d/*.ini`，装后自动重启 php-fpm，避免「.so 已生成但 phpinfo 看不到」。
 

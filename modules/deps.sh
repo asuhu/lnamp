@@ -63,14 +63,56 @@ install_php_openssl() {
     || log_warn "cacert.pem 下载失败，可稍后手动放置到 /usr/local/openssl/cert.pem"
 }
 
+# PHP 5.6 专用：编译 OpenSSL 1.0.2u 到独立前缀 ${PREFIX_OPENSSL_10}
+# ----------------------------------------------------------------------------
+# 为什么单独一份：PHP 5.6 无法链接 OpenSSL 3.x（API 不兼容），必须用 1.0.2。
+# 若写进共享的 /usr/local/openssl 会与 nginx/apache 使用的 OpenSSL3 互相破坏，
+# 因此装到 /usr/local/openssl-1.0，PHP 5.6 用 --with-openssl 指向此处即可。
+# 1.0.2 的运行库 soname 为 libssl.so.1.0.0 / libcrypto.so.1.0.0，与 3.x 的
+# libssl.so.3 不同名，可在 ldconfig 中并存，不影响其它组件。
+install_php56_openssl() {
+  local pre="${PREFIX_OPENSSL_10:-/usr/local/openssl-1.0}" ov="1.0.2u"
+  if ls "${pre}"/lib*/libcrypto.* >/dev/null 2>&1 && [ -x "${pre}/bin/openssl" ]; then
+    log "OpenSSL 1.0.2 (PHP5.6 专用) 已安装: $(${pre}/bin/openssl version 2>/dev/null)"
+  else
+    cd ~ || return 1
+    # 镜像/本地缓存优先(fetch 内置)，官方 old 源 → GitHub Release 资产兜底
+    fetch "openssl-${ov}.tar.gz" \
+      "https://www.openssl.org/source/old/1.0.2/openssl-${ov}.tar.gz" \
+      "https://github.com/openssl/openssl/releases/download/OpenSSL_1_0_2u/openssl-${ov}.tar.gz" \
+      || die "下载失败 (download failed): openssl-${ov}.tar.gz"
+    rm -rf "openssl-${ov}"; tar -zxf "openssl-${ov}.tar.gz" || die "openssl 1.0.2 解包失败"
+    cd "openssl-${ov}" || die "cd openssl-1.0.2"
+    log "编译 OpenSSL ${ov} -> ${pre} (PHP5.6 专用) ... (日志: ${BUILD_LOG})"
+    # 1.0.x 用 ./config；shared 生成动态库；-fPIC 保证可被 PHP 扩展链接
+    log_run "openssl1.0 config" ./config --prefix="${pre}" --openssldir="${pre}" shared zlib-dynamic -fPIC \
+      || die_with_log "OpenSSL ${ov} 配置失败"
+    # 注意：1.0.2 并行编译偶发依赖问题，这里用单线程更稳
+    log_run "openssl1.0 make"   make \
+      || die_with_log "OpenSSL ${ov} 编译失败"
+    log_run "openssl1.0 install" make install_sw \
+      || die_with_log "OpenSSL ${ov} 安装失败"
+    ls "${pre}"/lib*/libcrypto.* >/dev/null 2>&1 || die_with_log "OpenSSL ${ov} 安装失败(未找到 libcrypto)"
+    echo "${pre}/lib" > /etc/ld.so.conf.d/openssl-1.0.conf; ldconfig
+    cd ~ && rm -rf "openssl-${ov}" "openssl-${ov}.tar.gz"
+    log_ok "OpenSSL ${ov} (PHP5.6 专用) 安装完成: $(${pre}/bin/openssl version 2>/dev/null)"
+  fi
+  # CA 证书（curl.cainfo / openssl.cafile 用），沿用共享路径
+  [ -f /usr/local/openssl/cert.pem ] || {
+    mkdir -p /usr/local/openssl
+    wget --no-check-certificate -4 -O /usr/local/openssl/cert.pem https://curl.se/ca/cacert.pem 2>/dev/null \
+      || log_warn "cacert.pem 下载失败，可稍后手动放置到 /usr/local/openssl/cert.pem"
+  }
+}
+
 # PHP7.2+ 密码哈希依赖
 install_libsodium() {
   local v=libsodium-1.0.19
   [ -e /usr/local/lib/libsodium.so ] && return 0
   cd ~ || return 1
+  # 镜像(含 so/ 子目录)与本地缓存已由 fetch 自动优先，这里只给官方源兜底
   fetch "${v}.tar.gz" \
     "https://download.libsodium.org/libsodium/releases/${v}.tar.gz" \
-    "${MIRROR_PRIMARY}/so/${v}.tar.gz" "${MIRROR_FALLBACK}/so/${v}.tar.gz" \
     || die "下载失败 (download failed): ${v}.tar.gz"
   # 官方发布包解压目录可能是 libsodium-stable（并非 libsodium-1.0.19），从包内探测真实目录
   local d; d=$(tar -tzf "${v}.tar.gz" 2>/dev/null | head -1 | cut -d/ -f1)
@@ -108,7 +150,14 @@ install_phpredis() {
   local major="$1" rv="$2"
   local phpize="${PREFIX_PHP}/bin/phpize" phpcfg="${PREFIX_PHP}/bin/php-config"
   [ -x "$phpize" ] || { log_warn "未找到 phpize，跳过 phpredis"; return 0; }
-  if [ -z "$rv" ]; then [ "$major" -ge 8 ] && rv="6.3.0" || rv="5.3.7"; fi
+  # phpredis 版本与 PHP 主版本匹配：
+  #   PHP8 -> 6.3.0 ; PHP7 -> 5.3.7 ; PHP5 -> 4.3.0(最后一个支持 PHP5 的分支)
+  if [ -z "$rv" ]; then
+    if   [ "$major" -ge 8 ]; then rv="6.3.0"
+    elif [ "$major" -ge 7 ]; then rv="5.3.7"
+    else                          rv="4.3.0"
+    fi
+  fi
   log "编译 phpredis 扩展 (build phpredis ${rv})"
   cd ~ || return 1
   fetch "phpredis-${rv}.tar.gz" \

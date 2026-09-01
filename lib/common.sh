@@ -196,18 +196,43 @@ detect_mem() {
   export MEM_MB MEM_LEVEL MEMORY_LIMIT
 }
 
-# ----- 下载 (重试 + 超时 + 镜像回落) / robust download ---------------------
-# 策略：对每个候选 URL 用 wget 重试 3 次(带超时)；官方源全部失败后，
-#       自动追加镜像站(按文件名)再试。任一成功即返回 0；全部失败返回 1。
+# ----- 下载 (本地缓存 → 自己的镜像 → 官方源) / robust download ------------
+# 优先级 (priority order)：
+#   1) 本地缓存 packages/ 或 $LNAMP_CACHE（命中即用，完全不联网）
+#   2) 自己的镜像 MIRROR_PRIMARY / MIRROR_FALLBACK（按文件名，兼顾根目录与 so/ 子目录）
+#   3) 调用方给出的官方源（$@，最后兜底）
+# 这样"首选走自己可控的源"，官方源仅作最终兜底，稳定且便于离线部署。
 #
-# fetch <输出文件名> <url1> [url2 ...]
-#   调用方给出官方候选源，fetch 末尾会自动补上 MIRROR_PRIMARY / MIRROR_FALLBACK
-#   下的同名文件作为兜底。这样“官方三次失败/超时 → 自动转镜像站”。
+# fetch <输出文件名> [官方url1] [官方url2 ...]
+#   调用方只需给官方候选源；镜像与本地缓存由 fetch 统一按上面的优先级补齐。
 fetch() {
   local out="$1"; shift
   [ -n "$out" ] || { log_err "fetch: 缺少输出文件名"; return 1; }
   local base; base=$(basename "$out")
-  local urls=("$@" "${MIRROR_PRIMARY}/${base}" "${MIRROR_FALLBACK}/${base}")
+
+  # 1) 本地离线缓存优先 (local cache first)：
+  #    把预先下载好的安装包放进缓存目录，命中即直接复用，完全不联网。
+  #    搜索顺序：$LNAMP_CACHE(环境变量) -> <安装器目录>/packages
+  #    文件名必须与官方一致，例如 php-5.6.40.tar.gz、openssl-1.0.2u.tar.gz。
+  local cdir
+  for cdir in "${LNAMP_CACHE:-}" "${SCRIPT_DIR:-.}/packages"; do
+    [ -n "$cdir" ] || continue
+    if [ -s "${cdir}/${base}" ]; then
+      if [ "$(readlink -f "${cdir}/${base}" 2>/dev/null)" = "$(readlink -f "$out" 2>/dev/null)" ]; then
+        log_ok "使用本地缓存 (local cache): ${cdir}/${base}"; return 0
+      fi
+      if cp -f "${cdir}/${base}" "$out" 2>/dev/null; then
+        log_ok "使用本地缓存 (local cache): ${cdir}/${base}"; return 0
+      fi
+    fi
+  done
+
+  # 2) 自己的镜像优先(root 与 so/ 子目录) → 3) 官方源($@)最后兜底
+  local urls=(
+    "${MIRROR_PRIMARY}/${base}"     "${MIRROR_PRIMARY}/so/${base}"
+    "${MIRROR_FALLBACK}/${base}"    "${MIRROR_FALLBACK}/so/${base}"
+    "$@"
+  )
   local u
   for u in "${urls[@]}"; do
     [ -n "$u" ] || continue
@@ -224,26 +249,31 @@ fetch() {
   return 1
 }
 
-# dl <镜像相对路径> [输出名]   —— 镜像优先(primary→fallback)，全部失败则退出
+# dl <镜像相对路径> [输出名]   —— 镜像上的文件(root/so 均可)，由 fetch 统一按优先级取，失败退出
 dl() {
   local path="$1" out="${2:-$(basename "$1")}"
   fetch "$out" "${MIRROR_PRIMARY}/${path}" "${MIRROR_FALLBACK}/${path}" \
     || die "下载失败 (download failed): ${path}"
 }
 
-# dl_url <官方URL> [输出名]   —— 官方源(3次/超时) → 自动回落镜像(按文件名)，全部失败退出
+# dl_url <官方URL> [输出名]   —— 本地缓存/镜像优先(fetch 内置) → 官方源兜底，全部失败退出
 dl_url() {
   local url="$1" out="${2:-$(basename "$1")}"
   fetch "$out" "$url" || die "下载失败 (download failed): ${url}"
 }
 
-# dl_openssl <版本> [输出名]  —— OpenSSL 源码：GitHub 官方 Release → 镜像站
+# dl_openssl <版本> [输出名]
+#   缓存/镜像/官方查找统一用真实文件名 openssl-<ver>.tar.gz（与官方一致，
+#   这样预放到 packages/ 或镜像上的 openssl-<ver>.tar.gz 才能被命中）；
+#   下载完成后，若调用方要求别名(如 openssl-src.tar.gz)再重命名。
 dl_openssl() {
   local ov="$1" out="${2:-openssl-${ov}.tar.gz}"
-  fetch "$out" \
+  local real="openssl-${ov}.tar.gz"
+  fetch "$real" \
     "https://github.com/openssl/openssl/releases/download/openssl-${ov}/openssl-${ov}.tar.gz" \
-    "${MIRROR_PRIMARY}/openssl-${ov}.tar.gz" "${MIRROR_FALLBACK}/openssl-${ov}.tar.gz" \
-    || die "下载失败 (download failed): openssl-${ov}.tar.gz"
+    || die "下载失败 (download failed): ${real}"
+  [ "$out" != "$real" ] && mv -f "$real" "$out"
+  return 0
 }
 
 # ----- 随机密码 / random password ------------------------------------------
