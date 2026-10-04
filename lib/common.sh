@@ -143,6 +143,7 @@ _dep_name() {
       sqlite-devel)              echo libsqlite3-dev ;;
       libzip-devel)              echo libzip-dev ;;
       libwebp-devel)             echo libwebp-dev ;;
+      libvpx-devel)              echo libvpx-dev ;;
       libtiff-devel)             echo libtiff-dev ;;
       expat-devel)               echo libexpat1-dev ;;
       ncurses-devel)             echo libncurses-dev ;;

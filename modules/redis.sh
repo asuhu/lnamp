@@ -44,6 +44,12 @@ _redis_source() {
   sed -i "s@^dir .*@dir ${PREFIX_REDIS}/var@"                       "$rc"
   sed -i 's@^daemonize no@daemonize yes@'                           "$rc"
   sed -i 's@^#\? *bind .*@bind 127.0.0.1@'                          "$rc"
+  # 显式开启 protected-mode（与 bind 127.0.0.1 + requirepass 三重防护，避免未授权访问）
+  if grep -qiE '^[[:space:]]*#?[[:space:]]*protected-mode' "$rc"; then
+    sed -i 's@^[[:space:]]*#\?[[:space:]]*protected-mode.*@protected-mode yes@I' "$rc"
+  else
+    echo "protected-mode yes" >> "$rc"
+  fi
   # maxmemory = 物理内存的 1/8（沿用常见做法：MEM_MB/8 再乘 1e6 字节）
   local redis_maxmemory="$(( MEM_MB / 8 ))000000"
   if ! grep -q '^maxmemory ' "$rc"; then
@@ -71,7 +77,11 @@ RuntimeDirectory=redis
 RuntimeDirectoryMode=0755
 PIDFile=/var/run/redis/redis.pid
 ExecStart=${PREFIX_REDIS}/bin/redis-server ${rc}
-ExecStop=${PREFIX_REDIS}/bin/redis-cli shutdown
+# 用 SIGTERM 让 redis 自行优雅关闭（会落盘后退出）。
+# 不用 'redis-cli shutdown'：设了 requirepass 后该命令需认证，不带密码会失败，
+# 导致 systemctl stop 不可靠；而 SIGTERM 无需认证、最稳妥。
+ExecStop=/bin/kill -s TERM \$MAINPID
+TimeoutStopSec=30
 Restart=always
 LimitNOFILE=65535
 
@@ -99,8 +109,15 @@ _redis_pkg() {
     svc=redis
     conf=/etc/redis/redis.conf; [ -f "$conf" ] || conf=/etc/redis.conf
   fi
-  # 自动生成随机密码
+  # 自动生成随机密码 + 确保 protected-mode（发行版默认通常已为 yes，这里再确认一次）
   redis_set_random_password "$conf"
+  if [ -f "$conf" ]; then
+    if grep -qiE '^[[:space:]]*#?[[:space:]]*protected-mode' "$conf"; then
+      sed -i 's@^[[:space:]]*#\?[[:space:]]*protected-mode.*@protected-mode yes@I' "$conf"
+    else
+      echo "protected-mode yes" >> "$conf"
+    fi
+  fi
   enable_service "$svc"
   open_ports "6379"
   log_ok "Redis (${PM}) 安装完成"

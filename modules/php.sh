@@ -107,11 +107,28 @@ install_php() {
 
   # zip / gd 按版本差异（PHP 8 用新式 --with-zip；7.4 及以下用 --enable-zip）
   if [ "$major" -ge 8 ]; then cfg+=(--with-zip); else cfg+=(--enable-zip); fi
-  # gd：PHP8 与 7.4 用新式(--enable-gd --with-jpeg --with-freetype)；7.3/5.6 用旧式(--with-gd ...)
+  # gd：PHP8 / 7.4 用新式；PHP7.0–7.3 / 5.6 用旧式。
+  #   ★ 旧式开关必须【显式给出目录 =/usr】：不带路径时 configure 找不到库会【静默跳过】该编码器,
+  #     导致 imagejpeg() / imagewebp() 根本不存在 —— 这正是本项目「图库打开报 HTTP 500」的根因。
+  #   ★ WebP：PHP5.6 的 GD 经 libvpx(--with-vpx-dir)，PHP7.0–7.3 经 libwebp(--with-webp-dir)，
+  #           PHP7.4/8 用 --with-webp。按开发库是否存在 best-effort 启用；缺失只影响 WebP。
   if [ "$major" -ge 8 ] || [ "${major}.${minor}" = "7.4" ]; then
     cfg+=(--enable-gd --with-jpeg --with-freetype)
+    if _have_header webp/decode.h; then cfg+=(--with-webp)
+    else log_warn "未找到 libwebp 开发库(libwebp-devel)，GD 不含 WebP；JPEG/PNG 不受影响"; fi
   else
-    cfg+=(--with-gd --with-jpeg-dir --with-freetype-dir --with-png-dir)
+    cfg+=(--with-gd
+          --with-jpeg-dir=/usr
+          --with-png-dir=/usr
+          --with-freetype-dir=/usr
+          --with-zlib-dir=/usr)
+    if [ "$major" -lt 7 ]; then
+      if _have_header vpx/vpx_image.h vpx/vpxenc.h; then cfg+=(--with-vpx-dir=/usr)
+      else log_warn "未找到 libvpx 开发库(libvpx-devel)，PHP5.6 的 GD 不含 WebP；JPEG/PNG 不受影响"; fi
+    else
+      if _have_header webp/decode.h; then cfg+=(--with-webp-dir=/usr)
+      else log_warn "未找到 libwebp 开发库(libwebp-devel)，GD 不含 WebP；JPEG/PNG 不受影响"; fi
+    fi
   fi
 
   # ---- 编译标志 ----
@@ -128,6 +145,19 @@ install_php() {
   CFLAGS="${_cflags}" CXXFLAGS="${_cflags}" LDFLAGS="${_ldflags}" ./configure "${cfg[@]}"
   make -j "${THREAD}" && make install
   [ -x "${PREFIX_PHP}/bin/php" ] || die "PHP ${ver} 编译失败 (build failed)"
+
+  # ---- GD 编码器自检：确认 imagejpeg / imagewebp 真被编入(本项目图床等缩略图功能依赖) ----
+  # 把过去「静默地没有编码器 → 运行时才 500」提前暴露为安装日志里的明确告警。
+  if "${PREFIX_PHP}/bin/php" -r 'exit(extension_loaded("gd")?0:1);' 2>/dev/null; then
+    local _gj _gw
+    _gj=$("${PREFIX_PHP}/bin/php" -r 'echo function_exists("imagejpeg")?1:0;' 2>/dev/null)
+    _gw=$("${PREFIX_PHP}/bin/php" -r 'echo function_exists("imagewebp")?1:0;' 2>/dev/null)
+    log_ok "GD 编码器：JPEG=$([ "$_gj" = 1 ] && echo 有 || echo 无)  WebP=$([ "$_gw" = 1 ] && echo 有 || echo 无)"
+    [ "$_gj" = 1 ] || log_warn "GD 缺 JPEG 编码器(imagejpeg)——依赖缩略图的程序会报 500。请确认 libjpeg-turbo-devel 已安装后重装 PHP"
+    [ "$_gw" = 1 ] || log_warn "GD 缺 WebP 编码器(imagewebp)——不影响 JPEG;如需 WebP,PHP5.6 装 libvpx-devel、PHP7.0+ 装 libwebp-devel 后重装 PHP"
+  else
+    log_warn "未检测到 GD 扩展,缩略图功能将不可用(图床会自动回退原图)"
+  fi
 
   # ---- php.ini：以 production 为基础，按模板优化 ----
   mkdir -p "${PREFIX_PHP}/etc/php.d"
@@ -276,7 +306,20 @@ _php_base_deps() {
     else
       dep libmcrypt-devel libmhash-dev libgd-dev 2>/dev/null || true
     fi
+    # PHP5.6 的 GD 经 libvpx 提供 WebP 编码(imagewebp);装上开发库后 configure 才会启用 --with-vpx-dir。
+    dep libvpx-devel 2>/dev/null || log_warn "libvpx 开发库安装失败,PHP5.6 的 WebP 缩略图将不可用(不影响 JPEG)"
   fi
+}
+
+# 探测给定开发头文件是否存在(任一命中即返回真),供 GD 的 WebP 等可选编码器按需启用,
+# 避免在缺库时硬加 --with-vpx-dir/--with-webp-dir 造成 configure 失败。
+_have_header() {
+  local h
+  for h in "$@"; do
+    [ -f "/usr/include/${h}" ] && return 0
+    [ -f "/usr/local/include/${h}" ] && return 0
+  done
+  return 1
 }
 
 # 探测系统是否具备 libmcrypt 开发头文件（供 PHP5.6 决定是否 --with-mcrypt）。

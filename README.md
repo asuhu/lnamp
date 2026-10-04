@@ -12,7 +12,7 @@
 |------|----------------------|--------------------|
 | Nginx 系 | nginx 1.30.2 / **1.26.2** / 1.24.0 · tengine-3.1.0 · freenginx-1.30.1 | `source`(编译，含自编 OpenSSL/zlib/PCRE) · `pkg`(仅 nginx flavor)。tengine/freenginx 仅 `source` |
 | Apache | **2.4.67** | `source`(event+HTTP2，MPM 可选 prefork/worker/event) · `pkg` |
-| PHP | 8.5.6 / 8.4.22 / **8.3.31** / 8.2.14 / 7.4.33 / 5.6.40 | `fpm`(Nginx，Unix socket) · `apache`(mod_php)。fileinfo 默认启用；imagick 可选。**5.6.40 为 EOL 遗留版**：自动改用独立 OpenSSL 1.0.2、启用 mcrypt、跳过 sodium/argon2/intl、现代 GCC 追加 `-fcommon`，最佳环境 CentOS/RHEL 7 |
+| PHP | 8.5.6 / 8.4.22 / **8.3.31** / 8.2.14 / 7.4.33 / 5.6.40 | `fpm`(Nginx，Unix socket) · `apache`(mod_php)。fileinfo 默认启用；imagick 可选。**5.6.40 为 EOL 遗留版**：自动改用独立 OpenSSL 1.0.2、启用 mcrypt、跳过 sodium/argon2/intl、现代 GCC 追加 `-fcommon`，最佳环境 CentOS/RHEL 7。GD 已显式启用 JPEG/PNG/FreeType，并在装有 `libvpx-devel` 时启用 WebP(`imagejpeg`/`imagewebp` 均可用) |
 | MySQL | 9.7.0(LTS) / 8.4.9(LTS) / **8.0.46** / 5.7.44 | `source`(仅 5.x) · `binary` · `pkg`。数据在 `/data/mysql` |
 | MariaDB | **11.8.8**(LTS·2025) / 11.4.8(LTS·2024) / 10.11.14(LTS) | `binary`(archive.mariadb.org) · `pkg`(官方仓库)。**与 MySQL 二选一**，数据在 `/data/mariadb` |
 | Redis | 8.8.0 / **7.4.9** / 6.2.22 | `source` · `pkg`。自动随机密码，systemd 管理 |
