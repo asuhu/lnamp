@@ -14,6 +14,20 @@ _java_arch() {
   esac
 }
 
+# 从 TUNA 的 Adoptium 目录页里解析出当前最新的 tar.gz 完整 URL。
+# 目录页是 HTML，不能直接当下载源；文件名形如
+#   OpenJDK17U-jdk_x64_linux_hotspot_17.0.13_11.tar.gz
+_java_mirror_url() {
+  local major="$1" arch="$2" page f
+  command -v curl >/dev/null 2>&1 || return 1
+  page=$(mktemp 2>/dev/null) || return 1
+  curl -sL -m 20 "https://mirrors.tuna.tsinghua.edu.cn/Adoptium/${major}/jdk/${arch}/linux/" -o "$page" 2>/dev/null || { rm -f "$page"; return 1; }
+  f=$(grep -oE "OpenJDK${major}U-jdk_[A-Za-z0-9]+_linux_hotspot_[0-9._]+\.tar\.gz" "$page" 2>/dev/null | sort -u | sort -V | tail -1)
+  rm -f "$page"
+  [ -n "$f" ] || return 1
+  printf 'https://mirrors.tuna.tsinghua.edu.cn/Adoptium/%s/jdk/%s/linux/%s' "$major" "$arch" "$f"
+}
+
 # 安装 OpenJDK（Temurin），设置环境变量 JAVA_HOME / PATH / CLASSPATH
 install_java() {
   local major="$1"
@@ -24,28 +38,41 @@ install_java() {
   dep tar gzip
   cd ~ || return 1
   # Adoptium 最新 GA 二进制（自动重定向到对应版本，wget 跟随跳转）
+  # 注意 TUNA 那条必须给**具体文件名**：只写目录（.../linux/）会下回一张 HTML
+  # 索引页，然后 tar -tzf 直接失败，报成"解压目录探测失败"（219 上就这么挂的）。
+  # 所以目录页要现场解析出当前最新的 tar.gz 文件名。
+  local mirror
+  mirror=$(_java_mirror_url "$major" "$arch")
   fetch "OpenJDK${major}.tar.gz" \
     "https://api.adoptium.net/v3/binary/latest/${major}/ga/linux/${arch}/jdk/hotspot/normal/eclipse?project=jdk" \
-    "https://mirrors.tuna.tsinghua.edu.cn/Adoptium/${major}/jdk/${arch}/linux/" \
+    ${mirror:+"$mirror"} \
     || die_with_log "OpenJDK ${major} 下载失败"
+
+  # 下载物必须先证明自己是 gzip，否则后面"解压目录探测失败"这种报错根本看不出
+  # 根因是"下到了 HTML"。
+  if ! tar -tzf "OpenJDK${major}.tar.gz" >/dev/null 2>&1; then
+    local head_txt; head_txt=$(head -c 120 "OpenJDK${major}.tar.gz" 2>/dev/null | tr -d '\0' | tr '\n' ' ')
+    rm -f "OpenJDK${major}.tar.gz"
+    die "OpenJDK 下载内容不是有效的 tar.gz（很可能拿到的是镜像目录页面的 HTML）: ${head_txt}"
+  fi
   local d; d=$(tar -tzf "OpenJDK${major}.tar.gz" 2>/dev/null | head -1 | cut -d/ -f1)
-  [ -n "$d" ] || die "OpenJDK 解压目录探测失败"
-  rm -rf "$prefix" "$d"
+  [ -n "$d" ] && [ "$d" != "." ] || die "OpenJDK 解压目录探测失败（包内顶层目录异常）"
+  safe_rm_rf "$prefix" "$d"
   tar -zxf "OpenJDK${major}.tar.gz" || die "OpenJDK 解包失败"
-  mkdir -p "$(dirname "$prefix")"
+  safe_mkdir "$(dirname "$prefix")"
   mv "$d" "$prefix"
   rm -f "OpenJDK${major}.tar.gz"
 
   # 环境变量（/etc/profile.d，新登录 shell 自动生效）
-  cat > /etc/profile.d/lnamp-java.sh <<EOF
+  save_file /etc/profile.d/lnamp-java.sh <<EOF
 export JAVA_HOME=${prefix}
 export JRE_HOME=\${JAVA_HOME}
 export CLASSPATH=.:\${JAVA_HOME}/lib
 export PATH=\${JAVA_HOME}/bin:\${PATH}
 EOF
-  chmod 644 /etc/profile.d/lnamp-java.sh
-  ln -sf "${prefix}/bin/java"  /usr/local/bin/java
-  ln -sf "${prefix}/bin/javac" /usr/local/bin/javac
+  chmod 644 /etc/profile.d/lnamp-java.sh 2>/dev/null || true
+  log_run "java: 软链 java"  ln -sf "${prefix}/bin/java"  /usr/local/bin/java
+  log_run "java: 软链 javac" ln -sf "${prefix}/bin/javac" /usr/local/bin/javac
   # 当前进程立即可用（供随后的 Tomcat 使用）
   export JAVA_HOME="$prefix"; export PATH="${JAVA_HOME}/bin:${PATH}"
 
@@ -70,10 +97,10 @@ install_tomcat() {
     "https://dlcdn.apache.org/tomcat/tomcat-${maj}/v${ver}/bin/${pkg}.tar.gz" \
     "https://archive.apache.org/dist/tomcat/tomcat-${maj}/v${ver}/bin/${pkg}.tar.gz" \
     || die_with_log "Tomcat ${ver} 下载失败"
-  rm -rf "$prefix" "$pkg"
+  safe_rm_rf "$prefix" "$pkg"
   tar -zxf "${pkg}.tar.gz" || die "Tomcat 解包失败"
   rm -f "${pkg}.tar.gz"
-  mkdir -p "$(dirname "$prefix")"
+  safe_mkdir "$(dirname "$prefix")"
   mv "$pkg" "$prefix"
 
   # 运行用户 tomcat（无登录权限）
@@ -83,7 +110,7 @@ install_tomcat() {
 
   # systemd 服务
   local runuser=tomcat; id -u tomcat >/dev/null 2>&1 || runuser=www
-  cat > "${SYSTEMD_DIR}/tomcat.service" <<EOF
+  save_file "${SYSTEMD_DIR}/tomcat.service" <<EOF
 [Unit]
 Description=Apache Tomcat ${ver}
 After=network.target

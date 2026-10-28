@@ -3,7 +3,7 @@
 #  modules/apache.sh  ——  Apache 安装模块
 #  install_apache <version> <mode>     mode = source | pkg
 #  按 meta 中的 mpm(prefork/event) 与 http2(on/off) 决定编译形态：
-#    2.4.67 -> event MPM + HTTP2  (原 apache.sh)
+#    2.4.69 -> event MPM + HTTP2  (原 apache.sh)
 #    2.4.58 -> event,   支持 HTTP2     (原 apache_openssl.sh)
 # ============================================================================
 
@@ -30,12 +30,18 @@ _apache_source() {
 
   dep gcc gcc-c++ make wget pcre-devel expat-devel zlib-devel git net-tools
   ensure_www_user
-  cd ~ || die "cd ~"
+  cd_src ~ "cd ~"
 
   log "下载 (download): httpd-${ver}, ${apr}, apr-util-${aprutil}"
-  dl_url "http://archive.apache.org/dist/httpd/httpd-${ver}.tar.gz" "httpd-${ver}.tar.gz"
-  dl_url "http://archive.apache.org/dist/apr/apr-${apr}.tar.gz"     "apr-${apr}.tar.gz"
-  dl_url "http://archive.apache.org/dist/apr/apr-util-${aprutil}.tar.gz" "apr-util-${aprutil}.tar.gz"
+  # httpd：官方 CDN(dlcdn/downloads，当前版本)优先，archive.apache.org(官方永久归档)兜底
+  fetch "httpd-${ver}.tar.gz" \
+    "https://dlcdn.apache.org/httpd/httpd-${ver}.tar.gz" \
+    "https://downloads.apache.org/httpd/httpd-${ver}.tar.gz" \
+    "https://archive.apache.org/dist/httpd/httpd-${ver}.tar.gz" \
+    || die "下载失败 (download failed): httpd-${ver}.tar.gz"
+  # APR/APR-util：CDN 只保留当前版本，历史稳定版以官方归档 archive.apache.org 为源
+  dl_url "https://archive.apache.org/dist/apr/apr-${apr}.tar.gz"     "apr-${apr}.tar.gz"
+  dl_url "https://archive.apache.org/dist/apr/apr-util-${aprutil}.tar.gz" "apr-util-${aprutil}.tar.gz"
 
   tar -zxf "httpd-${ver}.tar.gz"
   tar -zxf "apr-${apr}.tar.gz"        && cp -fr "apr-${apr}"        "httpd-${ver}/srclib/apr"
@@ -53,9 +59,9 @@ _apache_source() {
           --with-ssl=/usr/local/openssl)
   fi
 
-  cd "httpd-${ver}" || die "cd httpd"
-  ./configure "${cfg[@]}"
-  make -j "${THREAD}" && make install
+  cd_src "httpd-${ver}" "cd httpd"
+  log_run "configure" ./configure "${cfg[@]}"
+  log_run "make" make -j "${THREAD}" && log_run "make install" make install
   [ -x "${PREFIX_APACHE}/bin/httpd" ] || die "Apache ${ver} 编译失败 (build failed)"
 
   # 基础配置：用户、ServerName、http2(可选)
@@ -64,7 +70,7 @@ _apache_source() {
     echo 'ServerName localhost:80' >> "${PREFIX_APACHE}/conf/httpd.conf"
 
   # 默认站点根目录 -> /home/wwwroot/web
-  mkdir -p "${WWWROOT}/web"
+  safe_mkdir "${WWWROOT}/web"
   [ -f "${WWWROOT}/web/index.html" ] || echo "<h1>It works (default site)</h1>" > "${WWWROOT}/web/index.html"
   sed -i "s@^DocumentRoot .*@DocumentRoot \"${WWWROOT}/web\"@" "${PREFIX_APACHE}/conf/httpd.conf"
   sed -i "s@^<Directory \"${PREFIX_APACHE}/htdocs\">@<Directory \"${WWWROOT}/web\">@" "${PREFIX_APACHE}/conf/httpd.conf"
@@ -78,7 +84,7 @@ _apache_source() {
   open_ports "80,443,8080,8443"
   register_path apache "${PREFIX_APACHE}/bin" httpd apachectl apxs
 
-  cd ~ && rm -rf "httpd-${ver}"* "apr-${apr}"* "apr-util-${aprutil}"*
+  cd ~ && safe_rm_rf "httpd-${ver}"* "apr-${apr}"* "apr-util-${aprutil}"*
   log_ok "Apache ${ver} (${mpm}, http2=${http2}) 安装完成"
 }
 
@@ -96,7 +102,8 @@ _apache_pkg() {
     fi
     enable_service apache2
   else
-    pkg_install epel-release httpd mod_ssl
+    ensure_epel
+    pkg_install httpd mod_ssl
     [ -x /usr/sbin/httpd ] || die "Apache (${PM}) 安装失败"
     # 切换 MPM(RHEL: /etc/httpd/conf.modules.d/00-mpm.conf 注释切换)
     if [ -n "$mpm_pick" ] && [ -f /etc/httpd/conf.modules.d/00-mpm.conf ]; then
@@ -119,10 +126,10 @@ _apache_validate_mpm() {
 # 写入所选 MPM 的调优块(include 进 httpd.conf)
 _apache_write_mpm_tuning() {
   local mpm="$1" hc="${PREFIX_APACHE}/conf/httpd.conf"
-  mkdir -p "${PREFIX_APACHE}/conf/lnamp"
+  safe_mkdir "${PREFIX_APACHE}/conf/lnamp"
   local f="${PREFIX_APACHE}/conf/lnamp/mpm.conf"
   case "$mpm" in
-    prefork) cat > "$f" <<'EOF'
+    prefork) save_file "$f" <<'EOF'
 <IfModule mpm_prefork_module>
     StartServers             5
     MinSpareServers          5
@@ -132,7 +139,7 @@ _apache_write_mpm_tuning() {
 </IfModule>
 EOF
       ;;
-    *) cat > "$f" <<EOF
+    *) save_file "$f" <<EOF
 <IfModule mpm_${mpm}_module>
     StartServers             3
     MinSpareThreads         25
@@ -157,7 +164,7 @@ _ensure_openssl() {
 # 启用 vhost 所需模块，并建立 conf/vhost 目录、在 httpd.conf 中 include
 _apache_enable_vhost() {
   local hc="${PREFIX_APACHE}/conf/httpd.conf"
-  mkdir -p "${PREFIX_APACHE}/conf/vhost"
+  safe_mkdir "${PREFIX_APACHE}/conf/vhost"
   local m
   for m in proxy_module proxy_fcgi_module rewrite_module expires_module deflate_module headers_module; do
     sed -i "s@^#\(LoadModule ${m} \)@\1@" "$hc"
@@ -168,7 +175,7 @@ _apache_enable_vhost() {
 }
 
 _apache_register_service() {
-  cat > "${SYSTEMD_DIR}/httpd.service" <<EOF
+  save_file "${SYSTEMD_DIR}/httpd.service" <<EOF
 [Unit]
 Description=Apache HTTP Server (source)
 After=network.target

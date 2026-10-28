@@ -21,10 +21,10 @@ install_phpmyadmin() {
   if [ ! -x "${PREFIX_PHP}/bin/php" ] && ! command -v php >/dev/null 2>&1; then
     log_warn "未检测到 PHP；phpMyAdmin 需 PHP 才能运行，将继续安装文件，请确保已/将安装 PHP。"
   fi
-  mkdir -p "$webdir"
+  safe_mkdir "$webdir"
   log "安装 phpMyAdmin ${ver} -> ${webdir}/phpMyAdmin"
 
-  cd "$webdir" || die "phpMyAdmin: 无法进入 ${webdir}"
+  cd_src "$webdir" "phpMyAdmin: 无法进入 ${webdir}"
   local pkg="phpMyAdmin-${ver}-all-languages"
   fetch "${pkg}.tar.gz" "https://files.phpmyadmin.net/phpMyAdmin/${ver}/${pkg}.tar.gz" \
     || die_with_log "phpMyAdmin ${ver} 下载失败"
@@ -32,19 +32,19 @@ install_phpmyadmin() {
   # 1) 解压并重命名为 phpMyAdmin（动态探测解压目录名，不假设固定命名）
   local d; d=$(tar -tzf "${pkg}.tar.gz" 2>/dev/null | head -1 | cut -d/ -f1)
   [ -n "$d" ] || d="$pkg"
-  rm -rf phpMyAdmin "$d"
+  safe_rm_rf phpMyAdmin "$d"
   tar -zxf "${pkg}.tar.gz" || die "phpMyAdmin 解包失败"
   rm -f "${pkg}.tar.gz"
   [ -d "$d" ] || die "phpMyAdmin: 解压目录 ${d} 未找到"
   mv "$d" phpMyAdmin
-  cd phpMyAdmin || die "cd phpMyAdmin"
+  cd_src phpMyAdmin "cd phpMyAdmin"
 
   # 2) 复制配置样例 config.sample.inc.php -> config.inc.php
   [ -f config.sample.inc.php ] || die "phpMyAdmin: 未找到 config.sample.inc.php"
   cp -f config.sample.inc.php config.inc.php
 
   # 3) 安全初始化 config.inc.php
-  mkdir -p upload save
+  safe_mkdir upload save
   local secret; secret=$(_pma_secret)
   # 3a) blowfish_secret（cookie 认证必需，需 ≥32 字节）：有该行则替换，无则在文件头部插入
   if grep -q "blowfish_secret" config.inc.php; then
@@ -56,7 +56,7 @@ install_phpmyadmin() {
     sed -i "1a \$cfg['blowfish_secret'] = '${secret}';\n\$cfg['UploadDir'] = 'upload';\n\$cfg['SaveDir'] = 'save';" config.inc.php
   fi
   # 3c) 移除 web 安装向导 setup 目录（安全建议）
-  rm -rf setup
+  safe_rm_rf setup
   # 3d) 属主与权限：config.inc.php 仅属主可读写
   ensure_www_user 2>/dev/null || ensure_sysuser www 2>/dev/null || true
   chown -R www:www "${webdir}/phpMyAdmin" 2>/dev/null || true
